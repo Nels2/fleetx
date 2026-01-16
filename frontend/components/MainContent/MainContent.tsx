@@ -1,11 +1,9 @@
 import React, { ReactNode, useContext } from "react";
 import classnames from "classnames";
 
-import { hasLicenseExpired } from "utilities/helpers";
 import { AppContext } from "context/app";
 
 import AppleBMTermsMessage from "components/MDM/AppleBMTermsMessage";
-import LicenseExpirationBanner from "components/LicenseExpirationBanner";
 import ApplePNCertRenewalMessage from "components/MDM/ApplePNCertRenewalMessage";
 import AppleBMRenewalMessage from "components/MDM/AppleBMRenewalMessage";
 import AndroidEnterpriseDeletedMessage from "components/MDM/AndroidEnterpriseDeletedMessage";
@@ -36,7 +34,6 @@ const MainContent = ({
 }: IMainContentProps): JSX.Element => {
   const classes = classnames(baseClass, className);
   const {
-    config,
     isPremiumTier,
     isAndroidEnterpriseDeleted,
     isApplePnsExpired,
@@ -49,10 +46,6 @@ const MainContent = ({
   } = useContext(AppContext);
 
   const renderAppWideBanner = () => {
-    const isFleetLicenseExpired = hasLicenseExpired(
-      config?.license.expiration || ""
-    );
-
     let banner: JSX.Element | null = null;
 
     // the order of these checks is important. This is the priority order
@@ -68,9 +61,6 @@ const MainContent = ({
         banner = <AppleBMTermsMessage />;
       } else if (isVppExpired || willVppExpire) {
         banner = <VppRenewalMessage expired={isVppExpired} />;
-      } else if (isFleetLicenseExpired) {
-        banner = <LicenseExpirationBanner />;
-      }
     }
 
     if (banner) {

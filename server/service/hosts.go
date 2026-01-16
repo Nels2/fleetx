@@ -354,8 +354,6 @@ func (svc *Service) StreamHosts(ctx context.Context, opt fleet.HostListOptions) 
 		opt.LowDiskSpaceFilter = nil
 		// the bootstrap package filter is premium-only
 		opt.MDMBootstrapPackageFilter = nil
-		// including vulnerability details on software is premium-only
-		opt.PopulateSoftwareVulnerabilityDetails = false
 	}
 
 	hosts, err := svc.ds.ListHosts(ctx, filter, opt)
@@ -2492,7 +2490,7 @@ func (r osVersionsResponse) Error() error { return r.Err }
 func osVersionsEndpoint(ctx context.Context, request interface{}, svc fleet.Service) (fleet.Errorer, error) {
 	req := request.(*osVersionsRequest)
 
-	osVersions, count, metadata, err := svc.OSVersions(ctx, req.TeamID, req.Platform, req.Name, req.Version, req.ListOptions, false, req.MaxVulnerabilities)
+	osVersions, count, metadata, err := svc.OSVersions(ctx, req.TeamID, req.Platform, req.Name, req.Version, req.ListOptions, true, req.MaxVulnerabilities)
 	if err != nil {
 		return &osVersionsResponse{Err: err}, nil
 	}
@@ -2680,7 +2678,7 @@ func (r getOSVersionResponse) Error() error { return r.Err }
 func getOSVersionEndpoint(ctx context.Context, request interface{}, svc fleet.Service) (fleet.Errorer, error) {
 	req := request.(*getOSVersionRequest)
 
-	osVersion, updateTime, err := svc.OSVersion(ctx, req.ID, req.TeamID, false, req.MaxVulnerabilities)
+	osVersion, updateTime, err := svc.OSVersion(ctx, req.ID, req.TeamID, true, req.MaxVulnerabilities)
 	if err != nil {
 		return getOSVersionResponse{Err: err}, nil
 	}

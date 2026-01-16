@@ -1633,11 +1633,6 @@ func validateSSOSettings(p fleet.AppConfig, existing *fleet.AppConfig, invalid *
 		}
 		validateSSOProviderSettings(p.SSOSettings.SSOProviderSettings, existingSSOProviderSettings, invalid)
 
-		if !lic.IsPremium() {
-			if p.SSOSettings.EnableJITProvisioning {
-				invalid.Append("enable_jit_provisioning", ErrMissingLicense.Error())
-			}
-		}
 	}
 }
 
