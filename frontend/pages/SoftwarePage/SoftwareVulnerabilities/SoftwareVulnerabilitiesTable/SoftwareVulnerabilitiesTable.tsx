@@ -1,12 +1,11 @@
 /** software/vulnerabilities Vulnerabilities tab > Table */
 
-import React, { useCallback, useContext, useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import { InjectedRouter } from "react-router";
 import { Row } from "react-table";
 
 import PATHS from "router/paths";
 
-import { AppContext } from "context/app";
 import {
   GITHUB_NEW_ISSUE_LINK,
   VULNERABILITIES_SEARCH_BOX_TOOLTIP,
@@ -71,8 +70,6 @@ const SoftwareVulnerabilitiesTable = ({
   teamId,
   isLoading,
 }: ISoftwareVulnerabilitiesTableProps) => {
-  const { isPremiumTier } = useContext(AppContext);
-
   const determineQueryParamChange = useCallback(
     (newTableQuery: ITableQueryData) => {
       const changedEntry = Object.entries(newTableQuery).find(([key, val]) => {
@@ -152,7 +149,6 @@ const SoftwareVulnerabilitiesTable = ({
   const vulnerabilitiesTableHeaders = useMemo(() => {
     if (!data) return [];
     return generateTableConfig(
-      isPremiumTier,
       router,
       {
         includeName: true,
@@ -234,14 +230,13 @@ const SoftwareVulnerabilitiesTable = ({
     );
   };
 
-  // Exploited vulnerabilities is a premium feature
   const renderExploitedVulnerabilitiesDropdown = () => {
     return (
       <DropdownWrapper
         name="exploited-vuln-filter"
         value={showExploitedVulnerabilitiesOnly.toString()}
         className={`${baseClass}__exploited-vulnerabilities-filter`}
-        options={getExploitedVulnerabilitiesDropdownOptions(isPremiumTier)}
+        options={getExploitedVulnerabilitiesDropdownOptions()}
         onChange={(newValue: SingleValue<CustomOptionType>) =>
           newValue && handleExploitedVulnFilterDropdownChange(newValue.value)
         }
@@ -259,7 +254,6 @@ const SoftwareVulnerabilitiesTable = ({
         resultsTitle="items"
         emptyComponent={() => (
           <EmptyVulnerabilitiesTable
-            isPremiumTier={isPremiumTier}
             teamId={teamId}
             exploitedFilter={showExploitedVulnerabilitiesOnly}
             isSoftwareDisabled={!isSoftwareEnabled}

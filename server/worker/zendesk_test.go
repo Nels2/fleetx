@@ -117,11 +117,14 @@ func TestZendeskRun(t *testing.T) {
 			`{"vulnerability":{"cve":"CVE-1234-5678","epss_probability":3.4,"cvss_score":50,"cisa_known_exploit":true}}`,
 			`"subject":"Vulnerability CVE-1234-5678 detected on 1 host(s)"`,
 			[]string{
+				"Probability of exploit",
+				"CVSS score",
+				"Known exploits",
 				`"group_id":123`,
 				"/some/path/1",
 				"/some/path/2",
 			},
-			"Probability of exploit",
+			"",
 		},
 		{
 			"failing global policy",
@@ -158,6 +161,8 @@ func TestZendeskRun(t *testing.T) {
 			`"subject":"Vulnerability CVE-1234-5678 detected on 1 host(s)"`,
 			[]string{
 				"Probability of exploit",
+				"CVSS score",
+				"Known exploits",
 				"/some/path/1",
 				"/some/path/2",
 			},
