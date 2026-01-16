@@ -5,7 +5,6 @@ import { IEmptyStateProps } from "interfaces/empty_state";
 import { IVulnerabilitiesEmptyStateReason } from "services/entities/vulnerabilities";
 
 export interface IEmptyVulnerabilitiesTableProps {
-  isPremiumTier?: boolean;
   teamId?: number;
   exploitedFilter?: boolean;
   isSoftwareDisabled?: boolean;
@@ -50,7 +49,6 @@ const emptyStateDetails: Record<
 };
 
 const EmptyVulnerabilitiesTable: React.FC<IEmptyVulnerabilitiesTableProps> = ({
-  isPremiumTier,
   teamId,
   exploitedFilter,
   isSoftwareDisabled,
@@ -89,7 +87,6 @@ const EmptyVulnerabilitiesTable: React.FC<IEmptyVulnerabilitiesTableProps> = ({
   }
 
   if (
-    isPremiumTier &&
     exploitedFilter &&
     emptyStateReason !== "unknown-cve" &&
     emptyStateReason !== "invalid-cve"

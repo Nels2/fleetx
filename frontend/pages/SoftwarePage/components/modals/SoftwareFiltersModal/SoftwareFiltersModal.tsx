@@ -21,7 +21,6 @@ interface ISoftwareFiltersModalProps {
   onExit: () => void;
   onSubmit: (vulnFilters: ISoftwareVulnFiltersParams) => void;
   vulnFilters: ISoftwareVulnFiltersParams;
-  isPremiumTier: boolean;
 }
 
 type IFormData = {
@@ -33,7 +32,6 @@ const SoftwareFiltersModal = ({
   onExit,
   onSubmit,
   vulnFilters,
-  isPremiumTier,
 }: ISoftwareFiltersModalProps) => {
   const [vulnSoftwareFilterEnabled, setVulnSoftwareFilterEnabled] = useState(
     vulnFilters.vulnerable || false
@@ -119,8 +117,7 @@ const SoftwareFiltersModal = ({
           inactiveText="Vulnerable software"
           activeText="Vulnerable software"
         />
-        {isPremiumTier && (
-          <>
+        <>
             <SeverityFilter
               severity={severity}
               minScore={formData.minScore}
@@ -143,8 +140,7 @@ const SoftwareFiltersModal = ({
             >
               Has known exploit
             </Checkbox>
-          </>
-        )}
+        </>
         <div className="modal-cta-wrap">
           <Button type="submit">Apply</Button>
           <Button variant="secondary" onClick={onExit}>

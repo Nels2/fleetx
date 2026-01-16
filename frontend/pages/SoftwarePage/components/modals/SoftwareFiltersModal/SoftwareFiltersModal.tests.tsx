@@ -23,7 +23,6 @@ const renderModal = (props = {}) =>
       onExit={noop}
       onSubmit={noop}
       vulnFilters={vulnFiltersDefault}
-      isPremiumTier
       {...props}
     />
   );
@@ -34,7 +33,6 @@ const setUpModal = (props = {}) =>
       onExit={noop}
       onSubmit={noop}
       vulnFilters={vulnFiltersDefault}
-      isPremiumTier
       {...props}
     />
   );
@@ -286,12 +284,10 @@ describe("SoftwareFiltersModal component", () => {
     });
   });
 
-  it("hides the severity filter on Fleet Free", () => {
-    renderModal({ isPremiumTier: false });
+  it("shows vulnerability filters on Fleet Free", () => {
+    renderModal();
 
-    expect(
-      screen.queryByRole("combobox", { name: "Severity" })
-    ).not.toBeInTheDocument();
-    expect(screen.queryByLabelText(/Min score/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Severity" })).toBeInTheDocument();
+    expect(screen.getByLabelText(/Min score/i)).toBeInTheDocument();
   });
 });
