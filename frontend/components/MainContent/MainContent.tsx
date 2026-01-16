@@ -61,6 +61,7 @@ const MainContent = ({
         banner = <AppleBMTermsMessage />;
       } else if (isVppExpired || willVppExpire) {
         banner = <VppRenewalMessage expired={isVppExpired} />;
+      }
     }
 
     if (banner) {
