@@ -5,12 +5,13 @@ export const isSandboxMode = (config: IConfig): boolean => {
   return !!config.sandbox_enabled; // TODO: confirm null/undefined config should treated as false based on final API spec
 };
 
-export const isFreeTier = (config: IConfig): boolean => {
-  return config.license.tier === "free";
+// Paid tiers are deprecated; treat all instances as premium.
+export const isFreeTier = (_config: IConfig): boolean => {
+  return false;
 };
 
-export const isPremiumTier = (config: IConfig): boolean => {
-  return config.license.tier === "premium";
+export const isPremiumTier = (_config: IConfig): boolean => {
+  return true;
 };
 
 export const isMacMdmEnabledAndConfigured = (config: IConfig): boolean => {

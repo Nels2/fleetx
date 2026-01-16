@@ -311,38 +311,38 @@ func (s *integrationTestSuite) TestPremiumEndpointsWithoutLicense() {
 		"fleet_id", "1",
 	)
 
-	// a request with a premium vulnerability filter returns a license error
+	// a request with vulnerability filters succeeds
 	resp = listSoftwareTitlesResponse{}
 	s.DoJSON(
 		"GET", "/api/latest/fleet/software/titles",
-		listSoftwareTitlesRequest{fleet.SoftwareTitleListOptions{VulnerableOnly: true, MinimumCVSS: 7.5}}, http.StatusPaymentRequired, &resp,
+		listSoftwareTitlesRequest{fleet.SoftwareTitleListOptions{VulnerableOnly: true, MinimumCVSS: 7.5}}, http.StatusOK, &resp,
 	)
 	verResp := listSoftwareVersionsResponse{}
 	s.DoJSON(
 		"GET", "/api/latest/fleet/software/versions",
-		listSoftwareRequest{fleet.SoftwareListOptions{VulnerableOnly: true, MinimumCVSS: 7.5}}, http.StatusPaymentRequired, &verResp,
+		listSoftwareRequest{fleet.SoftwareListOptions{VulnerableOnly: true, MinimumCVSS: 7.5}}, http.StatusOK, &verResp,
 	)
 
 	resp = listSoftwareTitlesResponse{}
 	s.DoJSON(
 		"GET", "/api/latest/fleet/software/titles",
-		listSoftwareTitlesRequest{fleet.SoftwareTitleListOptions{VulnerableOnly: true, MaximumCVSS: 7.5}}, http.StatusPaymentRequired, &resp,
+		listSoftwareTitlesRequest{fleet.SoftwareTitleListOptions{VulnerableOnly: true, MaximumCVSS: 7.5}}, http.StatusOK, &resp,
 	)
 	verResp = listSoftwareVersionsResponse{}
 	s.DoJSON(
 		"GET", "/api/latest/fleet/software/versions",
-		listSoftwareRequest{fleet.SoftwareListOptions{VulnerableOnly: true, MaximumCVSS: 7.5}}, http.StatusPaymentRequired, &verResp,
+		listSoftwareRequest{fleet.SoftwareListOptions{VulnerableOnly: true, MaximumCVSS: 7.5}}, http.StatusOK, &verResp,
 	)
 
 	resp = listSoftwareTitlesResponse{}
 	s.DoJSON(
 		"GET", "/api/latest/fleet/software/titles",
-		listSoftwareTitlesRequest{fleet.SoftwareTitleListOptions{VulnerableOnly: true, KnownExploit: true}}, http.StatusPaymentRequired, &resp,
+		listSoftwareTitlesRequest{fleet.SoftwareTitleListOptions{VulnerableOnly: true, KnownExploit: true}}, http.StatusOK, &resp,
 	)
 	verResp = listSoftwareVersionsResponse{}
 	s.DoJSON(
 		"GET", "/api/latest/fleet/software/versions",
-		listSoftwareRequest{fleet.SoftwareListOptions{VulnerableOnly: true, KnownExploit: true}}, http.StatusPaymentRequired, &verResp,
+		listSoftwareRequest{fleet.SoftwareListOptions{VulnerableOnly: true, KnownExploit: true}}, http.StatusOK, &verResp,
 	)
 
 	// lock/unlock/wipe a host. Wipe is Premium-only only for non-Android platforms (Android COBO wipe is available on Fleet Free).

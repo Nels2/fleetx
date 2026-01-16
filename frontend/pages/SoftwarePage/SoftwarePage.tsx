@@ -36,7 +36,6 @@ import SoftwareFiltersModal from "./components/modals/SoftwareFiltersModal";
 import {
   buildSoftwareFiltersQueryParams,
   getSoftwareFiltersFromQueryParams,
-  removePremiumOnlyFilters,
   ISoftwareFilters,
 } from "./SoftwareInventory/SoftwareInventoryTable/helpers";
 
@@ -204,10 +203,7 @@ const SoftwarePage = ({ children, router, location }: ISoftwarePageProps) => {
   // Library uses a self-service toggle (boolean), not the old dropdown filter
   const selfServiceOnly = queryParams?.self_service === "true";
 
-  const parsedSoftwareFilters = getSoftwareFiltersFromQueryParams(queryParams);
-  const softwareFilters = isPremiumTier
-    ? parsedSoftwareFilters
-    : removePremiumOnlyFilters(parsedSoftwareFilters);
+  const softwareFilters = getSoftwareFiltersFromQueryParams(queryParams);
 
   const [showManageAutomationsModal, setShowManageAutomationsModal] = useState(
     false

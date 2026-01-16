@@ -79,10 +79,6 @@ func (svc *Service) ListSoftwareTitles(
 		return nil, 0, nil, fleet.ErrMissingLicense
 	}
 
-	if !lic.IsPremium() && (opt.MaximumCVSS > 0 || opt.MinimumCVSS > 0 || opt.KnownExploit || opt.AITool) {
-		return nil, 0, nil, fleet.ErrMissingLicense
-	}
-
 	opt.TypeFilter, err = fleet.ParseSoftwareTypeFilter(opt.Source, opt.ExtensionFor)
 	if err != nil {
 		return nil, 0, nil, err
