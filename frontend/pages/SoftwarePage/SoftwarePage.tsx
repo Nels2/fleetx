@@ -483,7 +483,6 @@ const SoftwarePage = ({ children, router, location }: ISoftwarePageProps) => {
             onExit={toggleSoftwareFiltersModal}
             onSubmit={onApplyVulnFilters}
             vulnFilters={softwareVulnFilters}
-            isPremiumTier={isPremiumTier || false}
           />
         )}
       </>

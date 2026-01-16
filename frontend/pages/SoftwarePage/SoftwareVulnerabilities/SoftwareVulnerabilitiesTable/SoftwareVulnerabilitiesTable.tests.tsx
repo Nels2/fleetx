@@ -1,5 +1,5 @@
 import React from "react";
-import { screen, waitFor } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { createCustomRenderer, createMockRouter } from "test/test-utils";
 
 import { createMockVulnerabilitiesResponse } from "__mocks__/vulnerabilitiesMock";
@@ -257,11 +257,10 @@ describe("Software Vulnerabilities table", () => {
     expect(screen.queryByText("Vulnerability")).toBeNull();
   });
 
-  it("Renders premium columns", () => {
+  it("Renders vulnerability columns", () => {
     const render = createCustomRenderer({
       context: {
         app: {
-          isPremiumTier: true,
           isGlobalAdmin: true,
           currentUser: createMockUser(),
         },
@@ -291,7 +290,7 @@ describe("Software Vulnerabilities table", () => {
     expect(screen.getByText("Hosts")).toBeInTheDocument();
   });
 
-  it("Does not render premium only columns and disables exploited vulnerabilities dropdown", async () => {
+  it("Enables exploited vulnerabilities dropdown for free tier", async () => {
     const render = createCustomRenderer({
       context: {
         app: {
@@ -318,11 +317,9 @@ describe("Software Vulnerabilities table", () => {
     );
 
     expect(screen.getByText("Vulnerability")).toBeInTheDocument();
-    expect(screen.queryByText("Severity")).not.toBeInTheDocument();
-    expect(
-      screen.queryByText("Probability of exploit")
-    ).not.toBeInTheDocument();
-    expect(screen.queryByText("Published")).not.toBeInTheDocument();
+    expect(screen.getByText("Severity")).toBeInTheDocument();
+    expect(screen.getByText("Probability of exploit")).toBeInTheDocument();
+    expect(screen.getByText("Published")).toBeInTheDocument();
     expect(screen.getByText("Detected")).toBeInTheDocument();
     expect(screen.getByText("Hosts")).toBeInTheDocument();
 
@@ -331,16 +328,6 @@ describe("Software Vulnerabilities table", () => {
     expect(
       screen.getByText("Exploited vulnerabilities").parentElement?.parentElement
         ?.parentElement
-    ).toHaveClass("react-select__option--is-disabled");
-
-    await waitFor(() => {
-      waitFor(() => {
-        user.hover(screen.getByText("Exploited vulnerabilities"));
-      });
-
-      expect(
-        screen.getByText(/Available in Fleet Premium./i)
-      ).toBeInTheDocument();
-    });
+    ).not.toHaveClass("react-select__option--is-disabled");
   });
 });

@@ -26,7 +26,6 @@ interface ISoftwareFiltersModalProps {
   onExit: () => void;
   onSubmit: (vulnFilters: ISoftwareVulnFiltersParams) => void;
   vulnFilters: ISoftwareVulnFiltersParams;
-  isPremiumTier: boolean;
 }
 
 type IFormData = {
@@ -91,7 +90,6 @@ const SoftwareFiltersModal = ({
   onExit,
   onSubmit,
   vulnFilters,
-  isPremiumTier,
 }: ISoftwareFiltersModalProps) => {
   const [vulnSoftwareFilterEnabled, setVulnSoftwareFilterEnabled] = useState(
     vulnFilters.vulnerable || false
@@ -202,64 +200,62 @@ const SoftwareFiltersModal = ({
           inactiveText="Vulnerable software"
           activeText="Vulnerable software"
         />
-        {isPremiumTier && (
-          <>
-            <DropdownWrapper
-              name="severity-filter"
-              label={renderSeverityLabel()}
-              options={SEVERITY_DROPDOWN_OPTIONS}
-              value={severity}
-              onChange={onChangeSeverity}
-              placeholder="Any severity"
-              className={`${baseClass}__select-severity`}
-              isDisabled={!vulnSoftwareFilterEnabled}
-              helpText="CVSS scores (v3) range from 0.0 to 10.0 in 0.1 increments."
-            />
+        <>
+          <DropdownWrapper
+            name="severity-filter"
+            label={renderSeverityLabel()}
+            options={SEVERITY_DROPDOWN_OPTIONS}
+            value={severity}
+            onChange={onChangeSeverity}
+            placeholder="Any severity"
+            className={`${baseClass}__select-severity`}
+            isDisabled={!vulnSoftwareFilterEnabled}
+            helpText="CVSS scores (v3) range from 0.0 to 10.0 in 0.1 increments."
+          />
 
-            <div className={`${baseClass}__cvss-range`}>
-              <InputField
-                label="Min score"
-                onChange={onScoreChange}
-                name="minScore"
-                value={formData.minScore}
-                disabled={!vulnSoftwareFilterEnabled}
-                type="number"
-                placeholder="0.0"
-                min={0}
-                max={10}
-                step={0.1}
-                parseTarget
-                error={formErrors.minScore}
-              />
-              <InputField
-                label="Max score"
-                onChange={onScoreChange}
-                name="maxScore"
-                value={formData.maxScore}
-                disabled={!vulnSoftwareFilterEnabled}
-                type="number"
-                placeholder="10.0"
-                min={0}
-                max={10}
-                step={0.1}
-                parseTarget
-                error={formErrors.maxScore}
-              />
-            </div>
-            <Checkbox
-              onChange={({ value }: { value: boolean }) =>
-                setHasKnownExploit(value)
-              }
-              name="hasKnownExploit"
-              value={hasKnownExploit}
-              parseTarget
-              helpText="Software has vulnerabilities that have been actively exploited in the wild."
+          <div className={`${baseClass}__cvss-range`}>
+            <InputField
+              label="Min score"
+              onChange={onScoreChange}
+              name="minScore"
+              value={formData.minScore}
               disabled={!vulnSoftwareFilterEnabled}
-            >
-              Has known exploit
-            </Checkbox>
-          </>
-        )}
+              type="number"
+              placeholder="0.0"
+              min={0}
+              max={10}
+              step={0.1}
+              parseTarget
+              error={formErrors.minScore}
+            />
+            <InputField
+              label="Max score"
+              onChange={onScoreChange}
+              name="maxScore"
+              value={formData.maxScore}
+              disabled={!vulnSoftwareFilterEnabled}
+              type="number"
+              placeholder="10.0"
+              min={0}
+              max={10}
+              step={0.1}
+              parseTarget
+              error={formErrors.maxScore}
+            />
+          </div>
+          <Checkbox
+            onChange={({ value }: { value: boolean }) =>
+              setHasKnownExploit(value)
+            }
+            name="hasKnownExploit"
+            value={hasKnownExploit}
+            parseTarget
+            helpText="Software has vulnerabilities that have been actively exploited in the wild."
+            disabled={!vulnSoftwareFilterEnabled}
+          >
+            Has known exploit
+          </Checkbox>
+        </>
         <div className="modal-cta-wrap">
           <TooltipWrapper
             tipContent={formErrors.disableApplyButton}
