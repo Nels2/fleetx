@@ -47,7 +47,6 @@ interface IDataColumn {
 }
 
 const generateTableConfig = (
-  isPremiumTier: boolean,
   router: InjectedRouter,
   teamId?: number
 ): IDataColumn[] => {
@@ -229,15 +228,6 @@ const generateTableConfig = (
       },
     },
   ];
-
-  if (!isPremiumTier) {
-    return tableHeaders.filter(
-      (header) =>
-        header.accessor !== "epss_probability" &&
-        header.accessor !== "cve_published" &&
-        header.accessor !== "cvss_score"
-    );
-  }
 
   return tableHeaders;
 };
