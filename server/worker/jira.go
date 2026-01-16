@@ -14,7 +14,6 @@ import (
 
 	jira "github.com/andygrunwald/go-jira"
 	"github.com/fleetdm/fleet/v4/server/contexts/ctxerr"
-	"github.com/fleetdm/fleet/v4/server/contexts/license"
 	"github.com/fleetdm/fleet/v4/server/fleet"
 	"github.com/fleetdm/fleet/v4/server/service/externalsvc"
 )
@@ -43,7 +42,7 @@ var jiraTemplates = struct {
 	}).Parse(
 		`See vulnerability (CVE) details in National Vulnerability Database (NVD) here: [{{ .CVE }}|{{ .NVDURL }}{{ .CVE }}].
 
-{{ if .IsPremium }}{{ if .EPSSProbability }}\\Probability of exploit (reported by [FIRST.org/epss|https://www.first.org/epss/]): {{ .EPSSProbability }}
+{{ if .EPSSProbability }}\\Probability of exploit (reported by [FIRST.org/epss|https://www.first.org/epss/]): {{ .EPSSProbability }}
 {{ end }}
 {{ if .CVSSScore }}CVSS score (reported by [NVD|https://nvd.nist.gov/]): {{ .CVSSScore }}
 {{ end }}
@@ -51,7 +50,7 @@ var jiraTemplates = struct {
 {{ end }}
 {{ if .CISAKnownExploit }}Known exploits (reported by [CISA|https://www.cisa.gov/known-exploited-vulnerabilities-catalog]): {{ if deref .CISAKnownExploit }}Yes{{ else }}No{{ end }}
 \\
-{{ end }}{{ end }}
+{{ end }}
 
 Affected hosts:
 
@@ -101,9 +100,7 @@ type jiraVulnTplArgs struct {
 	CVE      string
 	Hosts    []fleet.HostVulnerabilitySummary
 
-	IsPremium bool
-
-	// the following fields are only included in the ticket for premium licenses.
+	// Optional CVE metadata.
 	EPSSProbability  *float64
 	CVSSScore        *float64
 	CISAKnownExploit *bool
@@ -288,7 +285,6 @@ func (j *Jira) runVuln(ctx context.Context, cli JiraClient, args jiraArgs) error
 		FleetURL:         j.FleetURL,
 		CVE:              vargs.CVE,
 		Hosts:            hosts,
-		IsPremium:        license.IsPremium(ctx),
 		EPSSProbability:  vargs.EPSSProbability,
 		CVSSScore:        vargs.CVSSScore,
 		CISAKnownExploit: vargs.CISAKnownExploit,

@@ -35,21 +35,20 @@ func FromContext(ctx context.Context) (LicenseChecker, bool) {
 	return v, ok
 }
 
-// IsPremium is a convenience function that returns true if the license stored
-// in the context is for a premium tier, false otherwise (including if there
-// is no license in the context).
+// IsPremium reports whether premium features are enabled for the request.
+// Paid tiers are deprecated, so missing license context defaults to premium.
 func IsPremium(ctx context.Context) bool {
-	if lic, ok := FromContext(ctx); ok {
+	if lic, ok := FromContext(ctx); ok && lic != nil {
 		return lic.IsPremium()
 	}
-	return false
+	return true
 }
 
 // IsAllowDisableTelemetry returns true if telemetry can be disabled based on
 // the license in the context.
 func IsAllowDisableTelemetry(ctx context.Context) bool {
-	if lic, ok := FromContext(ctx); ok {
+	if lic, ok := FromContext(ctx); ok && lic != nil {
 		return lic.IsAllowDisableTelemetry()
 	}
-	return false
+	return true
 }
