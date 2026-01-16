@@ -17,6 +17,9 @@ var freeValidVulnSortColumns = []string{
 	"hosts_count",
 	"host_count_updated_at",
 	"created_at",
+	"cvss_score",
+	"epss_probability",
+	"cve_published",
 }
 
 type cveNotFoundError struct{}
@@ -86,12 +89,10 @@ func (svc *Service) ListVulnerabilities(ctx context.Context, opt fleet.VulnListO
 		opt.ValidSortColumns = freeValidVulnSortColumns
 	}
 
+	opt.IsEE = true
+
 	if !opt.HasValidSortColumn() {
 		return nil, nil, badRequest("invalid order key")
-	}
-
-	if opt.KnownExploit && !opt.IsEE {
-		return nil, nil, fleet.ErrMissingLicense
 	}
 
 	vulns, meta, err := svc.ds.ListVulnerabilities(ctx, opt)
@@ -145,7 +146,7 @@ func (r getVulnerabilityResponse) Status() int {
 func getVulnerabilityEndpoint(ctx context.Context, req interface{}, svc fleet.Service) (fleet.Errorer, error) {
 	request := req.(*getVulnerabilityRequest)
 
-	vuln, known, err := svc.Vulnerability(ctx, request.CVE, request.TeamID, false)
+	vuln, known, err := svc.Vulnerability(ctx, request.CVE, request.TeamID, true)
 	if err != nil {
 		return getVulnerabilityResponse{Err: err}, nil
 	}

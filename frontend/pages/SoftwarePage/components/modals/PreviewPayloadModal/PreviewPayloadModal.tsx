@@ -1,6 +1,4 @@
-import React, { useContext } from "react";
-
-import { AppContext } from "context/app";
+import React from "react";
 import { syntaxHighlight } from "utilities/helpers";
 import { ISoftwareVulnerability } from "interfaces/software";
 
@@ -33,8 +31,6 @@ interface IJsonPayload {
 const PreviewPayloadModal = ({
   onCancel,
 }: IPreviewPayloadModalProps): JSX.Element => {
-  const { isFreeTier } = useContext(AppContext);
-
   const json: IJsonPayload = {
     timestamp: "0000-00-00T00:00:00Z",
     vulnerability: {
@@ -59,13 +55,6 @@ const PreviewPayloadModal = ({
       ],
     },
   };
-
-  if (isFreeTier) {
-    // Premium only features
-    delete json.vulnerability.epss_probability;
-    delete json.vulnerability.cvss_score;
-    delete json.vulnerability.cisa_known_exploit;
-  }
 
   return (
     <Modal

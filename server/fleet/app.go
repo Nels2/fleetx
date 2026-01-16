@@ -1473,11 +1473,13 @@ type LicenseInfo struct {
 }
 
 func (l *LicenseInfo) IsPremium() bool {
-	return l.Tier == TierPremium || l.Tier == tierBasicDeprecated || l.Tier == TierTrial
+	// Paid tiers are deprecated; all licenses unlock premium features.
+	return true
 }
 
 func (l *LicenseInfo) IsExpired() bool {
-	return l.Expiration.Before(time.Now())
+	// License expiration is no longer enforced.
+	return false
 }
 
 func (l *LicenseInfo) ForceUpgrade() {
@@ -1486,9 +1488,9 @@ func (l *LicenseInfo) ForceUpgrade() {
 	}
 }
 
-// Both free and specific premium users are allowed to disable telemetry
+// Telemetry can be disabled regardless of license tier.
 func (l *LicenseInfo) IsAllowDisableTelemetry() bool {
-	return !l.IsPremium() || l.AllowDisableTelemetry
+	return true
 }
 
 // Tier returns the license tier.

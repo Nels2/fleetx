@@ -14,8 +14,8 @@ func TestIsPremium(t *testing.T) {
 		ctx  context.Context
 		want bool
 	}{
-		{"no license", context.Background(), false},
-		{"free license", NewContext(context.Background(), &fleet.LicenseInfo{Tier: fleet.TierFree}), false},
+		{"no license", context.Background(), true},
+		{"free license", NewContext(context.Background(), &fleet.LicenseInfo{Tier: fleet.TierFree}), true},
 		{"premium license", NewContext(context.Background(), &fleet.LicenseInfo{Tier: fleet.TierPremium}), true},
 	}
 	for _, c := range cases {

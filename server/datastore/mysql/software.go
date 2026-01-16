@@ -1537,16 +1537,16 @@ type softwareCVE struct {
 	// CVE is the CVE identifier pulled from the NVD json (e.g. CVE-2019-1234)
 	CVE *string `db:"cve"`
 
-	// CVSSScore is the CVSS score pulled from the NVD json (premium only)
+	// CVSSScore is the CVSS score pulled from the NVD json.
 	CVSSScore *float64 `db:"cvss_score"`
 
-	// EPSSProbability is the EPSS probability pulled from FIRST (premium only)
+	// EPSSProbability is the EPSS probability pulled from FIRST.
 	EPSSProbability *float64 `db:"epss_probability"`
 
-	// CISAKnownExploit is the CISAKnownExploit pulled from CISA (premium only)
+	// CISAKnownExploit is the CISAKnownExploit pulled from CISA.
 	CISAKnownExploit *bool `db:"cisa_known_exploit"`
 
-	// CVEPublished is the CVE published date pulled from the NVD json (premium only)
+	// CVEPublished is the CVE published date pulled from the NVD json.
 	CVEPublished *time.Time `db:"cve_published"`
 
 	// Description is the CVE description field pulled from the NVD json
