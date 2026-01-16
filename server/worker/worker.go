@@ -53,10 +53,10 @@ type failingPolicyArgs struct {
 type vulnArgs struct {
 	CVE                 string     `json:"cve,omitempty"`
 	AffectedSoftwareIDs []uint     `json:"affected_software,omitempty"`
-	EPSSProbability     *float64   `json:"epss_probability,omitempty"`   // Premium feature only
-	CVSSScore           *float64   `json:"cvss_score,omitempty"`         // Premium feature only
-	CISAKnownExploit    *bool      `json:"cisa_known_exploit,omitempty"` // Premium feature only
-	CVEPublished        *time.Time `json:"cve_published,omitempty"`      // Premium feature only
+	EPSSProbability     *float64   `json:"epss_probability,omitempty"`
+	CVSSScore           *float64   `json:"cvss_score,omitempty"`
+	CISAKnownExploit    *bool      `json:"cisa_known_exploit,omitempty"`
+	CVEPublished        *time.Time `json:"cve_published,omitempty"`
 }
 
 // Worker runs jobs. NOT SAFE FOR CONCURRENT USE.
