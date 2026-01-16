@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/fleetdm/fleet/v4/server/contexts/ctxerr"
-	"github.com/fleetdm/fleet/v4/server/contexts/license"
 	"github.com/fleetdm/fleet/v4/server/fleet"
 	"github.com/fleetdm/fleet/v4/server/service/externalsvc"
 	kitlog "github.com/go-kit/log"
@@ -43,7 +42,7 @@ var zendeskTemplates = struct {
 	}).Parse(
 		`See vulnerability (CVE) details in National Vulnerability Database (NVD) here: [{{ .CVE }}]({{ .NVDURL }}{{ .CVE }}).
 
-{{ if .IsPremium }}{{ if .EPSSProbability }}
+{{ if .EPSSProbability }}
 &nbsp;
 Probability of exploit (reported by [FIRST.org/epss](https://www.first.org/epss/)): {{ .EPSSProbability }}
 {{ end }}
@@ -53,7 +52,7 @@ Probability of exploit (reported by [FIRST.org/epss](https://www.first.org/epss/
 {{ end }}
 {{ if .CISAKnownExploit }}Known exploits (reported by [CISA](https://www.cisa.gov/known-exploited-vulnerabilities-catalog)): {{ if deref .CISAKnownExploit }}Yes{{ else }}No{{ end }}
 &nbsp;
-{{ end }}{{ end }}
+{{ end }}
 
 Affected hosts:
 
@@ -103,9 +102,7 @@ type zendeskVulnTplArgs struct {
 	CVE      string
 	Hosts    []fleet.HostVulnerabilitySummary
 
-	IsPremium bool
-
-	// the following fields are only included in the ticket for premium licenses.
+	// Optional CVE metadata.
 	EPSSProbability  *float64
 	CVSSScore        *float64
 	CISAKnownExploit *bool
@@ -292,7 +289,6 @@ func (z *Zendesk) runVuln(ctx context.Context, cli ZendeskClient, args zendeskAr
 		FleetURL:         z.FleetURL,
 		CVE:              vargs.CVE,
 		Hosts:            hosts,
-		IsPremium:        license.IsPremium(ctx),
 		EPSSProbability:  vargs.EPSSProbability,
 		CVSSScore:        vargs.CVSSScore,
 		CISAKnownExploit: vargs.CISAKnownExploit,
