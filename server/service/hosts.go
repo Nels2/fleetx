@@ -439,7 +439,6 @@ func sanitizeNonPremiumHostListOptions(isPremium bool, opt *fleet.HostListOption
 	}
 	opt.LowDiskSpaceFilter = nil
 	opt.MDMBootstrapPackageFilter = nil
-	opt.PopulateSoftwareVulnerabilityDetails = false
 	opt.DEPProfileErrorFilter = nil
 	opt.DEPAssignProfileResponseFilter = nil
 }
@@ -2928,7 +2927,7 @@ func (r osVersionsResponse) Error() error { return r.Err }
 func osVersionsEndpoint(ctx context.Context, request interface{}, svc fleet.Service) (fleet.Errorer, error) {
 	req := request.(*osVersionsRequest)
 
-	osVersions, count, metadata, err := svc.OSVersions(ctx, req.TeamID, req.Platform, req.Name, req.Version, req.ListOptions, false, req.MaxVulnerabilities)
+	osVersions, count, metadata, err := svc.OSVersions(ctx, req.TeamID, req.Platform, req.Name, req.Version, req.ListOptions, true, req.MaxVulnerabilities)
 	if err != nil {
 		return &osVersionsResponse{Err: err}, nil
 	}
@@ -3116,7 +3115,7 @@ func (r getOSVersionResponse) Error() error { return r.Err }
 func getOSVersionEndpoint(ctx context.Context, request interface{}, svc fleet.Service) (fleet.Errorer, error) {
 	req := request.(*getOSVersionRequest)
 
-	osVersion, updateTime, err := svc.OSVersion(ctx, req.ID, req.TeamID, false, req.MaxVulnerabilities)
+	osVersion, updateTime, err := svc.OSVersion(ctx, req.ID, req.TeamID, true, req.MaxVulnerabilities)
 	if err != nil {
 		return getOSVersionResponse{Err: err}, nil
 	}
