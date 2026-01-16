@@ -381,22 +381,12 @@ describe("SoftwareFiltersModal component", () => {
     });
   });
 
-  it("shows only Types and Vulnerable software on Fleet Free", () => {
-    renderModal({ isPremiumTier: false, availableTypes: SOFTWARE_TYPES });
-
+  it("shows vulnerability filters on Fleet Free", async () => {
+    const { user } = setUpModal({ isPremiumTier: false, availableTypes: SOFTWARE_TYPES });
     expect(screen.getByText("Types")).toBeInTheDocument();
-    expect(screen.getByText(/Vulnerable software/i)).toBeInTheDocument();
-    expect(
-      screen.queryByText("CISA known exploit (KEV)")
-    ).not.toBeInTheDocument();
-    expect(screen.queryByText(/Has known exploit/i)).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Advanced" })
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("combobox", { name: "Severity" })
-    ).not.toBeInTheDocument();
-    expect(screen.queryByLabelText(/Min score/i)).not.toBeInTheDocument();
+    expect(screen.getByText("CISA known exploit (KEV)")).toBeInTheDocument();
+    await openAdvanced(user);
+    expect(screen.getByRole("combobox", { name: "Severity" })).toBeInTheDocument();
   });
 
   it("opens Advanced when a severity filter is already applied", () => {
@@ -463,10 +453,10 @@ describe("SoftwareFiltersModal component", () => {
       expect(aiToolsSwitch()).toHaveAttribute("aria-checked", "true");
     });
 
-    it("is hidden on Fleet Free", () => {
+    it("is available on Fleet Free", () => {
       renderModal({ showAiToolFilter: true, isPremiumTier: false });
 
-      expect(aiToolsSwitch()).not.toBeInTheDocument();
+      expect(aiToolsSwitch()).toBeInTheDocument();
       expect(screen.getByText(/Vulnerable software/i)).toBeInTheDocument();
     });
 

@@ -26,10 +26,10 @@ interface ISoftwareFiltersModalProps {
   onExit: () => void;
   onSubmit: (filters: ISoftwareFilters) => void;
   filters: ISoftwareFilters;
-  isPremiumTier: boolean;
+  isPremiumTier?: boolean;
   /** Types offered in the picker. The picker is hidden when omitted. */
   availableTypes?: readonly ISoftwareType[];
-  /** Shows the Premium-only "AI tools" toggle. */
+  /** Shows the "AI tools" toggle. */
   showAiToolFilter?: boolean;
 }
 
@@ -42,7 +42,6 @@ const SoftwareFiltersModal = ({
   onExit,
   onSubmit,
   filters,
-  isPremiumTier,
   availableTypes,
   showAiToolFilter = false,
 }: ISoftwareFiltersModalProps) => {
@@ -171,7 +170,7 @@ const SoftwareFiltersModal = ({
             onChange={setSelectedTypes}
           />
         )}
-        {isPremiumTier && showAiToolFilter && (
+        {showAiToolFilter && (
           <Slider
             value={aiToolFilterEnabled}
             onChange={() => setAiToolFilterEnabled(!aiToolFilterEnabled)}
@@ -186,7 +185,7 @@ const SoftwareFiltersModal = ({
           inactiveText="Vulnerable software"
           activeText="Vulnerable software"
         />
-        {isPremiumTier && (
+        {(
           <>
             <div className={`${baseClass}__kev`}>
               <h3 className={`${baseClass}__section-title`}>
