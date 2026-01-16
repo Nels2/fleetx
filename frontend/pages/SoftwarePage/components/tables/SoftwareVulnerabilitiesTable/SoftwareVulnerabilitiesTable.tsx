@@ -3,13 +3,12 @@
  software/os/:id > Vulnerabilities table
  */
 
-import React, { useContext, useMemo } from "react";
+import React, { useMemo } from "react";
 import classnames from "classnames";
 import { InjectedRouter } from "react-router";
 import { Row } from "react-table";
 import PATHS from "router/paths";
 
-import { AppContext } from "context/app";
 import { ISoftwareVulnerability } from "interfaces/software";
 import { CONTACT_FLEET_LINK, GITHUB_NEW_ISSUE_LINK } from "utilities/constants";
 import { DisplayPlatform } from "interfaces/platform";
@@ -87,8 +86,6 @@ const SoftwareVulnerabilitiesTable = ({
   router,
   teamIdForApi,
 }: ISoftwareVulnerabilitiesTableProps) => {
-  const { isPremiumTier } = useContext(AppContext);
-
   const classNames = classnames(baseClass, className);
 
   const handleRowSelect = (row: IRowProps) => {
@@ -107,8 +104,8 @@ const SoftwareVulnerabilitiesTable = ({
   };
 
   const tableHeaders = useMemo(
-    () => generateTableConfig(Boolean(isPremiumTier), router, teamIdForApi),
-    [isPremiumTier]
+    () => generateTableConfig(router, teamIdForApi),
+    [router, teamIdForApi]
   );
 
   const renderVulnerabilitiesCount = () => (
@@ -120,7 +117,7 @@ const SoftwareVulnerabilitiesTable = ({
       <TableContainer
         columnConfigs={tableHeaders}
         data={data}
-        defaultSortHeader={isPremiumTier ? "updated_at" : "cve"} // TODO: Change premium to created_at when added to API
+        defaultSortHeader="created_at"
         defaultSortDirection="desc"
         emptyComponent={() => <NoVulnsDetected itemName={itemName} />}
         isAllPagesSelected={false}

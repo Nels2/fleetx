@@ -18,7 +18,6 @@ const renderModal = (props = {}) =>
       onExit={noop}
       onSubmit={noop}
       vulnFilters={vulnFiltersDefault}
-      isPremiumTier
       {...props}
     />
   );
@@ -52,7 +51,6 @@ describe("SoftwareFiltersModal component", () => {
         onExit={noop}
         onSubmit={noop}
         vulnFilters={vulnFiltersDefault}
-        isPremiumTier
       />
     );
     await user.click(screen.getByRole("switch"));
@@ -71,7 +69,6 @@ describe("SoftwareFiltersModal component", () => {
         onExit={noop}
         onSubmit={noop}
         vulnFilters={vulnFiltersDefault}
-        isPremiumTier
       />
     );
     await user.click(screen.getByRole("switch"));
@@ -114,7 +111,6 @@ describe("SoftwareFiltersModal component", () => {
         onExit={noop}
         onSubmit={onSubmitSpy}
         vulnFilters={vulnFiltersDefault}
-        isPremiumTier
       />
     );
     await user.click(screen.getByRole("switch"));
@@ -147,7 +143,6 @@ describe("SoftwareFiltersModal component", () => {
         onExit={noop}
         onSubmit={noop}
         vulnFilters={vulnFiltersDefault}
-        isPremiumTier
       />
     );
     await user.click(screen.getByRole("switch"));
