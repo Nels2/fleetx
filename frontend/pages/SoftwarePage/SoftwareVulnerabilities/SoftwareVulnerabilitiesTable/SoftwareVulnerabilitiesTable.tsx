@@ -1,34 +1,37 @@
 /** software/vulnerabilities Vulnerabilities tab > Table */
 
-import React, { useCallback, useContext, useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import { InjectedRouter } from "react-router";
-import { SingleValue } from "react-select-5";
 import { Row } from "react-table";
 
-import CustomLink from "components/CustomLink";
-import DropdownWrapper from "components/forms/fields/DropdownWrapper";
-import { CustomOptionType } from "components/forms/fields/DropdownWrapper/DropdownWrapper";
-import LastUpdatedText from "components/LastUpdatedText";
-import TableContainer from "components/TableContainer";
-import { ITableQueryData } from "components/TableContainer/TableContainer";
-import TableCount from "components/TableContainer/TableCount";
-import { AppContext } from "context/app";
-import EmptyVulnerabilitiesTable from "pages/SoftwarePage/components/tables/SoftwareVulnerabilitiesTable/EmptyVulnerabilitiesTable";
 import PATHS from "router/paths";
-import {
-  IVulnerabilitiesResponse,
-  IVulnerabilitiesEmptyStateReason,
-} from "services/entities/vulnerabilities";
+
 import {
   GITHUB_NEW_ISSUE_LINK,
   VULNERABILITIES_SEARCH_BOX_TOOLTIP,
 } from "utilities/constants";
-import { getNextLocationPath } from "utilities/helpers";
 import { isIncompleteQuoteQuery } from "utilities/strings/stringUtils";
-import { getPathWithQueryParams } from "utilities/url";
 
-import { getExploitedVulnerabilitiesDropdownOptions } from "./helpers";
+import CustomLink from "components/CustomLink";
+import TableContainer from "components/TableContainer";
+import LastUpdatedText from "components/LastUpdatedText";
+import { ITableQueryData } from "components/TableContainer/TableContainer";
+import TableCount from "components/TableContainer/TableCount";
+import { SingleValue } from "react-select-5";
+import DropdownWrapper from "components/forms/fields/DropdownWrapper";
+import { CustomOptionType } from "components/forms/fields/DropdownWrapper/DropdownWrapper";
+
+import EmptyVulnerabilitiesTable from "pages/SoftwarePage/components/tables/SoftwareVulnerabilitiesTable/EmptyVulnerabilitiesTable";
+
+import {
+  IVulnerabilitiesResponse,
+  IVulnerabilitiesEmptyStateReason,
+} from "services/entities/vulnerabilities";
+import { getPathWithQueryParams } from "utilities/url";
+import { getNextLocationPath } from "utilities/helpers";
+
 import generateTableConfig from "./VulnerabilitiesTableConfig";
+import { getExploitedVulnerabilitiesDropdownOptions } from "./helpers";
 
 const baseClass = "software-vulnerabilities-table";
 
@@ -67,8 +70,6 @@ const SoftwareVulnerabilitiesTable = ({
   teamId,
   isLoading,
 }: ISoftwareVulnerabilitiesTableProps) => {
-  const { isPremiumTier } = useContext(AppContext);
-
   const determineQueryParamChange = useCallback(
     (newTableQuery: ITableQueryData) => {
       const changedEntry = Object.entries(newTableQuery).find(([key, val]) => {
@@ -148,7 +149,6 @@ const SoftwareVulnerabilitiesTable = ({
   const vulnerabilitiesTableHeaders = useMemo(() => {
     if (!data) return [];
     return generateTableConfig(
-      isPremiumTier,
       router,
       {
         includeName: true,
@@ -230,15 +230,13 @@ const SoftwareVulnerabilitiesTable = ({
     );
   };
 
-  // Exploited vulnerabilities is a premium feature
   const renderExploitedVulnerabilitiesDropdown = () => {
     return (
       <DropdownWrapper
-        ariaLabel="Filter by exploit status"
         name="exploited-vuln-filter"
         value={showExploitedVulnerabilitiesOnly.toString()}
         className={`${baseClass}__exploited-vulnerabilities-filter`}
-        options={getExploitedVulnerabilitiesDropdownOptions(isPremiumTier)}
+        options={getExploitedVulnerabilitiesDropdownOptions()}
         onChange={(newValue: SingleValue<CustomOptionType>) =>
           newValue && handleExploitedVulnFilterDropdownChange(newValue.value)
         }
@@ -257,7 +255,6 @@ const SoftwareVulnerabilitiesTable = ({
         resultsTitle="items"
         emptyComponent={() => (
           <EmptyVulnerabilitiesTable
-            isPremiumTier={isPremiumTier}
             teamId={teamId}
             exploitedFilter={showExploitedVulnerabilitiesOnly}
             isSoftwareDisabled={!isSoftwareEnabled}
