@@ -86,15 +86,6 @@ func (svc *Service) ListSoftwareTitles(
 		return nil, 0, nil, fleet.ErrMissingLicense
 	}
 
-	if !lic.IsPremium() && (opt.MaximumCVSS > 0 || opt.MinimumCVSS > 0 || opt.KnownExploit) {
-		return nil, 0, nil, fleet.ErrMissingLicense
-	}
-
-	opt.TypeFilter, err = fleet.ParseSoftwareTypeFilter(opt.Source, opt.ExtensionFor)
-	if err != nil {
-		return nil, 0, nil, err
-	}
-
 	// always include metadata for software titles
 	opt.ListOptions.IncludeMetadata = true
 	// cursor-based pagination is not supported for software titles
@@ -267,9 +258,9 @@ func (svc *Service) SoftwareTitleByID(ctx context.Context, id uint, teamID *uint
 						}
 						pkg.PatchPolicy = patchPolicy
 
-						// While patch_when_closed or notify_before_patching is on, the pre-install
-						// query is Fleet's managed app open query, shown read-only.
-						if patchPolicy != nil && (patchPolicy.PatchWhenClosed || patchPolicy.NotifyBeforePatching) {
+						// While patch_when_closed is on, the pre-install query is Fleet's managed
+						// app open query, shown read-only.
+						if patchPolicy != nil && patchPolicy.PatchWhenClosed {
 							pkg.PreInstallQuery = pkg.AppOpenQuery
 						}
 					}

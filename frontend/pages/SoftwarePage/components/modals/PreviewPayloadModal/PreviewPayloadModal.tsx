@@ -1,11 +1,10 @@
-import React, { useContext } from "react";
+import React from "react";
+import { syntaxHighlight } from "utilities/helpers";
+import { ISoftwareVulnerability } from "interfaces/software";
 
+import Modal from "components/Modal";
 import Button from "components/buttons/Button";
 import CustomLink from "components/CustomLink";
-import Modal from "components/Modal";
-import { AppContext } from "context/app";
-import { ISoftwareVulnerability } from "interfaces/software";
-import { syntaxHighlight } from "utilities/helpers";
 
 const baseClass = "preview-data-modal";
 
@@ -32,8 +31,6 @@ interface IJsonPayload {
 const PreviewPayloadModal = ({
   onCancel,
 }: IPreviewPayloadModalProps): JSX.Element => {
-  const { isFreeTier } = useContext(AppContext);
-
   const json: IJsonPayload = {
     timestamp: "0000-00-00T00:00:00Z",
     vulnerability: {
@@ -58,14 +55,6 @@ const PreviewPayloadModal = ({
       ],
     },
   };
-
-  if (isFreeTier) {
-    // Premium only features
-    delete json.vulnerability.epss_probability;
-    delete json.vulnerability.cvss_score;
-    delete json.vulnerability.cisa_known_exploit;
-    delete json.vulnerability.cve_published;
-  }
 
   return (
     <Modal

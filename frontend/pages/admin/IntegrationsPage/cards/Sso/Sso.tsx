@@ -31,7 +31,6 @@ export const AUTH_TARGETS_BY_INDEX = ["fleet-users", "end-users"];
 const Sso = ({
   appConfig,
   handleSubmit,
-  isPremiumTier,
   isUpdatingSettings,
   router,
   subsection,
@@ -231,28 +230,26 @@ const Sso = ({
           >
             Allow SSO login initiated by identity provider
           </Checkbox>
-          {isPremiumTier && (
-            <Checkbox
-              onChange={(value: boolean) =>
-                commitFields({ enableJitProvisioning: value })
-              }
-              name="enableJitProvisioning"
-              value={enableJitProvisioning}
-              disabled={isSubmitting || gitOpsModeEnabled}
-              helpText={
-                <>
-                  <CustomLink
-                    url={`${LEARN_MORE_ABOUT_BASE_LINK}/just-in-time-provisioning`}
-                    text="Learn more"
-                    newTab
-                  />{" "}
-                  about just-in-time (JIT) user provisioning.
-                </>
-              }
-            >
-              Create user and sync permissions on login
-            </Checkbox>
-          )}
+          <Checkbox
+            onChange={(value: boolean) =>
+              commitFields({ enableJitProvisioning: value })
+            }
+            name="enableJitProvisioning"
+            value={enableJitProvisioning}
+            disabled={isSubmitting || gitOpsModeEnabled}
+            helpText={
+              <>
+                <CustomLink
+                  url={`${LEARN_MORE_ABOUT_BASE_LINK}/just-in-time-provisioning`}
+                  text="Learn more"
+                  newTab
+                />{" "}
+                about just-in-time (JIT) user provisioning.
+              </>
+            }
+          >
+            Create user and sync permissions on login
+          </Checkbox>
         </div>
         <GitOpsModeTooltipWrapper
           renderChildren={(disableChildren) => (

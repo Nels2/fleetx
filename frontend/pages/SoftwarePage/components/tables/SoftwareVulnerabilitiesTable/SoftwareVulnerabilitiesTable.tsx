@@ -3,21 +3,20 @@
  software/os/:id > Vulnerabilities table
  */
 
+import React, { useMemo } from "react";
 import classnames from "classnames";
-import React, { useContext, useMemo } from "react";
 import { InjectedRouter } from "react-router";
 import { Row } from "react-table";
+import PATHS from "router/paths";
 
-import CustomLink from "components/CustomLink";
-import EmptyState from "components/EmptyState";
+import { ISoftwareVulnerability } from "interfaces/software";
+import { CONTACT_FLEET_LINK } from "utilities/constants";
+import { DisplayPlatform } from "interfaces/platform";
+import { getPathWithQueryParams } from "utilities/url";
 import TableContainer from "components/TableContainer";
 import TableCount from "components/TableContainer/TableCount";
-import { AppContext } from "context/app";
-import { DisplayPlatform } from "interfaces/platform";
-import { ISoftwareVulnerability } from "interfaces/software";
-import PATHS from "router/paths";
-import { CONTACT_FLEET_LINK } from "utilities/constants";
-import { getPathWithQueryParams } from "utilities/url";
+import EmptyState from "components/EmptyState";
+import CustomLink from "components/CustomLink";
 
 import generateTableConfig from "./SoftwareVulnerabilitiesTableConfig";
 
@@ -87,8 +86,6 @@ const SoftwareVulnerabilitiesTable = ({
   router,
   teamIdForApi,
 }: ISoftwareVulnerabilitiesTableProps) => {
-  const { isPremiumTier } = useContext(AppContext);
-
   const classNames = classnames(baseClass, className);
 
   const handleRowSelect = (row: IRowProps) => {
@@ -107,8 +104,8 @@ const SoftwareVulnerabilitiesTable = ({
   };
 
   const tableHeaders = useMemo(
-    () => generateTableConfig(Boolean(isPremiumTier), router, teamIdForApi),
-    [isPremiumTier]
+    () => generateTableConfig(router, teamIdForApi),
+    [router, teamIdForApi]
   );
 
   const renderVulnerabilitiesCount = () => (
@@ -120,7 +117,7 @@ const SoftwareVulnerabilitiesTable = ({
       <TableContainer
         columnConfigs={tableHeaders}
         data={data}
-        defaultSortHeader={isPremiumTier ? "updated_at" : "cve"} // TODO: Change premium to created_at when added to API
+        defaultSortHeader="created_at"
         defaultSortDirection="desc"
         emptyComponent={() => <NoVulnsDetected itemName={itemName} />}
         isAllPagesSelected={false}
