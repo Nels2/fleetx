@@ -373,7 +373,6 @@ const HostSoftware = ({
               min_cvss_score: queryParams.min_cvss_score,
               max_cvss_score: queryParams.max_cvss_score,
             })}
-            isPremiumTier={isPremiumTier || false}
           />
         )}
       </>
