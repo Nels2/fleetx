@@ -73,6 +73,7 @@
     "integrations": {
       "jira": null,
       "zendesk": null,
+      "freescout": null,
       "google_calendar": null,
       "conditional_access_enabled": null
     },

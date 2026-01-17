@@ -139,6 +139,7 @@ org_settings:
   integrations:
     jira: []
     zendesk: []
+    freescout: []
     google_calendar:
       - domain: example.com
         api_key_json: { "client_email": "service@example.com", "private_key": "google_calendar_private_key" }
