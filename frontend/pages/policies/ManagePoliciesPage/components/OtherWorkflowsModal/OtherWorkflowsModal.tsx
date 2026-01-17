@@ -277,7 +277,11 @@ const OtherWorkflowsModal = ({
   };
 
   const renderIntegrations = () => {
+<<<<<<< HEAD
     return hasAvailableIntegrations ? (
+=======
+    return jira?.length || zendesk?.length || freescout?.length ? (
+>>>>>>> d4ecef0c0c (feat: add FreeScout integration support)
       <>
         <div className={`${baseClass}__integrations`}>
           <Dropdown
