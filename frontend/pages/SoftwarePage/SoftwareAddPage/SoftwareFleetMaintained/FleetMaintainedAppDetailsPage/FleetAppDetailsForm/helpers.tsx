@@ -1,5 +1,4 @@
-// @ts-ignore
-import validateQuery from "components/forms/validators/validate_query";
+import { validateQuery } from "components/forms/validators/validate_query";
 
 import {
   IFleetMaintainedAppFormData,
