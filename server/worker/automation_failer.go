@@ -10,7 +10,7 @@ import (
 	zendesk "github.com/nukosuke/go-zendesk/zendesk"
 )
 
-// TestAutomationFailer is an implementation of the JiraClient and ZendeskClient interfaces
+// TestAutomationFailer is an implementation of the JiraClient, ZendeskClient, and FreeScoutClient interfaces
 // that wraps another client and introduces forced failures so that error-handling
 // logic can be tested at scale in a real environment (e.g. in the load-testing
 // environment).
@@ -32,6 +32,10 @@ type TestAutomationFailer struct {
 	// ZendeskClient is the wrapped Zendesk client to use for normal calls, when no
 	// forced failure is inserted.
 	ZendeskClient ZendeskClient
+
+	// FreeScoutClient is the wrapped FreeScout client to use for normal calls, when no
+	// forced failure is inserted.
+	FreeScoutClient FreeScoutClient
 
 	callCounts int
 }
@@ -60,12 +64,26 @@ func (f *TestAutomationFailer) CreateZendeskTicket(ctx context.Context, ticket *
 	return f.ZendeskClient.CreateZendeskTicket(ctx, ticket)
 }
 
+// CreateFreeScoutConversation implements the FreeScoutClient and introduces a forced failure if
+// required, otherwise it returns the result of calling
+// f.FreeScoutClient.CreateFreeScoutConversation with the provided arguments.
+func (f *TestAutomationFailer) CreateFreeScoutConversation(ctx context.Context, subject, message string) (int64, error) {
+	if err := f.forceErr(subject); err != nil {
+		return 0, err
+	}
+	return f.FreeScoutClient.CreateFreeScoutConversation(ctx, subject, message)
+}
+
 func (f *TestAutomationFailer) JiraConfigMatches(opts *externalsvc.JiraOptions) bool {
 	return f.JiraClient.JiraConfigMatches(opts)
 }
 
 func (f *TestAutomationFailer) ZendeskConfigMatches(opts *externalsvc.ZendeskOptions) bool {
 	return f.ZendeskClient.ZendeskConfigMatches(opts)
+}
+
+func (f *TestAutomationFailer) FreeScoutConfigMatches(opts *externalsvc.FreeScoutOptions) bool {
+	return f.FreeScoutClient.FreeScoutConfigMatches(opts)
 }
 
 func (f *TestAutomationFailer) forceErr(testValue string) error {
