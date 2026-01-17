@@ -788,12 +788,12 @@ const ManagePolicyPage = ({
                 enable_calendar_events: formData.enabled,
                 webhook_url: formData.url,
               },
+              // These fields will never actually be changed here. See comment above
+              // IGlobalIntegrations definition.
+              zendesk: teamConfig?.integrations.zendesk || [],
+              jira: teamConfig?.integrations.jira || [],
+              freescout: teamConfig?.integrations.freescout || [],
             },
-            // These fields will never actually be changed here. See comment above
-            // IGlobalIntegrations definition.
-            zendesk: teamConfig?.integrations.zendesk || [],
-            jira: teamConfig?.integrations.jira || [],
-            freescout: teamConfig?.integrations.freescout || [],
           },
           teamIdForApi
         );
