@@ -381,6 +381,18 @@ func scanVulnerabilities(
 				errHandler(ctx, logger, "queueing vulnerabilities to FreeScout", err)
 			}
 
+		case "freescout":
+			// queue job to create freescout conversation
+			if err := worker.QueueFreeScoutVulnJobs(
+				ctx,
+				ds,
+				kitlog.With(logger, "freescout", "vulnerabilities"),
+				recentV,
+				matchingMeta,
+			); err != nil {
+				errHandler(ctx, logger, "queueing vulnerabilities to FreeScout", err)
+			}
+
 		default:
 			err = ctxerr.New(automationCtx, "no vuln automations enabled")
 			errHandler(automationCtx, logger, "attempting to process vuln automations", err)
