@@ -42,7 +42,7 @@ const FORM_VALIDATION_CONFIG: Record<
           }
 
           const { error } = validateQuery(query);
-          return error ?? "Invalid query";
+          return error ?? "";
         },
       },
     ],
