@@ -27,6 +27,7 @@ spec:
     google_calendar: null
     jira: null
     zendesk: null
+    freescout: null
   mdm:
     android_enabled_and_configured: false
     apple_business_manager:
