@@ -257,7 +257,9 @@ func (svc *Service) ModifyTeam(ctx context.Context, teamID uint, payload fleet.T
 	}
 
 	if payload.Integrations != nil {
-		if payload.Integrations.Jira != nil || payload.Integrations.Zendesk != nil {
+		if payload.Integrations.Jira != nil ||
+			payload.Integrations.Zendesk != nil ||
+			payload.Integrations.Freescout != nil {
 			// the team integrations must reference an existing global config integration.
 			if _, err := payload.Integrations.MatchWithIntegrations(appCfg.Integrations); err != nil {
 				return nil, fleet.NewInvalidArgumentError("integrations", err.Error())
@@ -270,6 +272,7 @@ func (svc *Service) ModifyTeam(ctx context.Context, teamID uint, payload fleet.T
 
 			team.Config.Integrations.Jira = payload.Integrations.Jira
 			team.Config.Integrations.Zendesk = payload.Integrations.Zendesk
+			team.Config.Integrations.Freescout = payload.Integrations.Freescout
 		}
 
 		// Only update the calendar integration if it's not nil.
@@ -1960,7 +1963,9 @@ func (svc *Service) modifyDefaultTeamConfig(ctx context.Context, payload fleet.T
 			return nil, err
 		}
 
-		if payload.Integrations.Jira != nil || payload.Integrations.Zendesk != nil {
+		if payload.Integrations.Jira != nil ||
+			payload.Integrations.Zendesk != nil ||
+			payload.Integrations.Freescout != nil {
 			// the team integrations must reference an existing global config integration.
 			if _, err := payload.Integrations.MatchWithIntegrations(appCfg.Integrations); err != nil {
 				return nil, fleet.NewInvalidArgumentError("integrations", err.Error())
@@ -1975,6 +1980,7 @@ func (svc *Service) modifyDefaultTeamConfig(ctx context.Context, payload fleet.T
 		// Always update integrations when provided (even if empty arrays to clear them)
 		config.Integrations.Jira = payload.Integrations.Jira
 		config.Integrations.Zendesk = payload.Integrations.Zendesk
+		config.Integrations.Freescout = payload.Integrations.Freescout
 	}
 
 	// Validate mutual exclusivity of automations if either webhooks or integrations were updated

@@ -49,10 +49,12 @@ interface IOtherWorkflowsModalProps {
 const findEnabledIntegration = ({
   jira,
   zendesk,
+  freescout,
 }: IZendeskJiraIntegrations) => {
   return (
     jira?.find((j) => j.enable_failing_policies) ||
-    zendesk?.find((z) => z.enable_failing_policies)
+    zendesk?.find((z) => z.enable_failing_policies) ||
+    freescout?.find((f) => f.enable_failing_policies)
   );
 };
 
@@ -60,6 +62,7 @@ const getIntegrationType = (integration?: IIntegration) => {
   return (
     (!!integration?.group_id && "zendesk") ||
     (!!integration?.project_key && "jira") ||
+    (!!integration?.mailbox_id && "freescout") ||
     undefined
   );
 };
@@ -83,16 +86,17 @@ const OtherWorkflowsModal = ({
 
   const [newPolicyIds, setNewPolicyIds] = useState(webhook.policy_ids || []);
 
-  const { jira, zendesk } = availableIntegrations || {};
+  const { jira, zendesk, freescout } = availableIntegrations || {};
   const allIntegrations: IIntegration[] = [];
   jira && allIntegrations.push(...jira);
   zendesk && allIntegrations.push(...zendesk);
+  freescout && allIntegrations.push(...freescout);
   const hasAvailableIntegrations = allIntegrations.length > 0;
 
   const dropdownOptions = allIntegrations.map(
-    ({ group_id, project_key, url }) => ({
-      value: group_id || project_key,
-      label: `${url} - ${group_id || project_key}`,
+    ({ group_id, project_key, mailbox_id, url }) => ({
+      value: group_id || project_key || mailbox_id,
+      label: `${url} - ${group_id || project_key || mailbox_id}`,
     })
   );
 
@@ -147,8 +151,10 @@ const OtherWorkflowsModal = ({
   const onSelectIntegration = (selected: string | number) => {
     setSelectedIntegration(
       allIntegrations.find(
-        ({ group_id, project_key }) =>
-          group_id === selected || project_key === selected
+        ({ group_id, project_key, mailbox_id }) =>
+          group_id === selected ||
+          project_key === selected ||
+          mailbox_id === selected
       )
     );
   };
@@ -199,6 +205,15 @@ const OtherWorkflowsModal = ({
           z.group_id === selectedIntegration?.group_id,
       })) || null;
 
+    const newFreeScout =
+      availableIntegrations.freescout?.map((f) => ({
+        ...f,
+        enable_failing_policies:
+          isPolicyAutomationsEnabled &&
+          !isWebhookEnabled &&
+          f.mailbox_id === selectedIntegration?.mailbox_id,
+      })) || null;
+
     // NOTE: backend uses webhook_settings to store automated policy ids for both webhooks and integrations
     const newWebhook = {
       failing_policies_webhook: {
@@ -214,6 +229,7 @@ const OtherWorkflowsModal = ({
       integrations: {
         jira: newJira,
         zendesk: newZendesk,
+        freescout: newFreeScout,
         google_calendar: null, // When null, the backend does not update google_calendar
       },
     });
@@ -265,7 +281,11 @@ const OtherWorkflowsModal = ({
   };
 
   const renderIntegrations = () => {
+<<<<<<< HEAD
     return hasAvailableIntegrations ? (
+=======
+    return jira?.length || zendesk?.length || freescout?.length ? (
+>>>>>>> d4ecef0c0c (feat: add FreeScout integration support)
       <>
         <div className={`${baseClass}__integrations`}>
           <Dropdown
@@ -273,7 +293,9 @@ const OtherWorkflowsModal = ({
             onChange={onSelectIntegration}
             placeholder="Select integration"
             value={
-              selectedIntegration?.group_id || selectedIntegration?.project_key
+              selectedIntegration?.group_id ||
+              selectedIntegration?.project_key ||
+              selectedIntegration?.mailbox_id
             }
             label="Integration"
             error={errors.integration}

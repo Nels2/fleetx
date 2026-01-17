@@ -23,6 +23,7 @@ const (
 	FailingPolicyWebhook FailingPolicyAutomationType = "webhook"
 	FailingPolicyJira    FailingPolicyAutomationType = "jira"
 	FailingPolicyZendesk FailingPolicyAutomationType = "zendesk"
+	FailingPolicyFreeScout FailingPolicyAutomationType = "freescout"
 )
 
 // FailingPolicyAutomationConfig holds the configuration for processing a
@@ -286,6 +287,12 @@ func getActiveAutomation(webhook fleet.FailingPoliciesWebhookSettings, intgs fle
 	for _, z := range intgs.Zendesk {
 		if z.EnableFailingPolicies {
 			return FailingPolicyZendesk
+		}
+	}
+	// check for freescout integrations
+	for _, f := range intgs.Freescout {
+		if f.EnableFailingPolicies {
+			return FailingPolicyFreeScout
 		}
 	}
 	return ""

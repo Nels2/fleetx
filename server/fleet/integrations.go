@@ -17,6 +17,7 @@ import (
 type TeamIntegrations struct {
 	Jira           []*TeamJiraIntegration         `json:"jira"`
 	Zendesk        []*TeamZendeskIntegration      `json:"zendesk"`
+	Freescout      []*TeamFreeScoutIntegration    `json:"freescout"`
 	GoogleCalendar *TeamGoogleCalendarIntegration `json:"google_calendar"`
 	// ConditionalAccessEnabled indicates whether the conditional access feature is enabled on this team.
 	ConditionalAccessEnabled optjson.Bool `json:"conditional_access_enabled,omitempty"`
@@ -44,6 +45,17 @@ func (ti TeamIntegrations) Copy() TeamIntegrations {
 			if z != nil {
 				zendeskCopy := *z
 				result.Zendesk[i] = &zendeskCopy
+			}
+		}
+	}
+
+	// Deep copy FreeScout integrations
+	if ti.Freescout != nil {
+		result.Freescout = make([]*TeamFreeScoutIntegration, len(ti.Freescout))
+		for i, f := range ti.Freescout {
+			if f != nil {
+				freescoutCopy := *f
+				result.Freescout[i] = &freescoutCopy
 			}
 		}
 	}
@@ -76,6 +88,10 @@ func (ti TeamIntegrations) MatchWithIntegrations(globalIntgs Integrations) (Inte
 	if err != nil {
 		return result, err
 	}
+	freescoutIntgs, err := IndexFreeScoutIntegrations(globalIntgs.Freescout)
+	if err != nil {
+		return result, err
+	}
 
 	var errs []string
 	for _, tmJira := range ti.Jira {
@@ -97,6 +113,16 @@ func (ti TeamIntegrations) MatchWithIntegrations(globalIntgs Integrations) (Inte
 		}
 		intg.EnableFailingPolicies = tmZendesk.EnableFailingPolicies
 		result.Zendesk = append(result.Zendesk, &intg)
+	}
+	for _, tmFreeScout := range ti.Freescout {
+		key := tmFreeScout.UniqueKey()
+		intg, ok := freescoutIntgs[key]
+		if !ok {
+			errs = append(errs, fmt.Sprintf("unknown FreeScout integration for url %s and mailbox ID %v", tmFreeScout.URL, tmFreeScout.MailboxID))
+			continue
+		}
+		intg.EnableFailingPolicies = tmFreeScout.EnableFailingPolicies
+		result.Freescout = append(result.Freescout, &intg)
 	}
 
 	if len(errs) > 0 {
@@ -123,6 +149,15 @@ func (ti TeamIntegrations) Validate() error {
 			return fmt.Errorf("duplicate Zendesk integration for url %s and group ID %v", z.URL, z.GroupID)
 		}
 		zendesk[key] = z
+	}
+
+	freescout := make(map[string]*TeamFreeScoutIntegration, len(ti.Freescout))
+	for _, f := range ti.Freescout {
+		key := f.UniqueKey()
+		if _, ok := freescout[key]; ok {
+			return fmt.Errorf("duplicate FreeScout integration for url %s and mailbox ID %v", f.URL, f.MailboxID)
+		}
+		freescout[key] = f
 	}
 	return nil
 }
@@ -151,6 +186,19 @@ type TeamZendeskIntegration struct {
 // UniqueKey returns the unique key of this integration.
 func (z TeamZendeskIntegration) UniqueKey() string {
 	return z.URL + "\n" + strconv.FormatInt(z.GroupID, 10)
+}
+
+// TeamFreeScoutIntegration configures an instance of an integration with the
+// external FreeScout service for a team.
+type TeamFreeScoutIntegration struct {
+	URL                   string `json:"url"`
+	MailboxID             int64  `json:"mailbox_id"`
+	EnableFailingPolicies bool   `json:"enable_failing_policies"`
+}
+
+// UniqueKey returns the unique key of this integration.
+func (f TeamFreeScoutIntegration) UniqueKey() string {
+	return f.URL + "\n" + strconv.FormatInt(f.MailboxID, 10)
 }
 
 type TeamGoogleCalendarIntegration struct {
@@ -383,6 +431,112 @@ func makeTestZendeskRequest(ctx context.Context, intg *ZendeskIntegration) error
 	return nil
 }
 
+// FreeScoutIntegration configures an instance of an integration with the FreeScout system.
+type FreeScoutIntegration struct {
+	URL                           string `json:"url"`
+	APIToken                      string `json:"api_token"`
+	MailboxID                     int64  `json:"mailbox_id"`
+	CustomerEmail                 string `json:"customer_email"`
+	AssignTo                      int64  `json:"assign_to"`
+	EnableFailingPolicies         bool   `json:"enable_failing_policies"`
+	EnableSoftwareVulnerabilities bool   `json:"enable_software_vulnerabilities"`
+}
+
+func (f FreeScoutIntegration) uniqueKey() string {
+	return f.URL + "\n" + strconv.FormatInt(f.MailboxID, 10)
+}
+
+// IndexFreeScoutIntegrations indexes the provided FreeScout integrations in a map
+// keyed by 'URL\nMailboxID'. It returns an error if a duplicate configuration is
+// found for the same combination.
+func IndexFreeScoutIntegrations(freescoutIntgs []*FreeScoutIntegration) (map[string]FreeScoutIntegration, error) {
+	indexed := make(map[string]FreeScoutIntegration, len(freescoutIntgs))
+	for _, intg := range freescoutIntgs {
+		key := intg.uniqueKey()
+		if _, ok := indexed[key]; ok {
+			return nil, fmt.Errorf("duplicate FreeScout integration for url %s and mailbox id %v", intg.URL, intg.MailboxID)
+		}
+		indexed[key] = *intg
+	}
+	return indexed, nil
+}
+
+// ValidateFreeScoutIntegrations validates that the merge of the original and
+// new FreeScout integrations does not result in any duplicate configuration,
+// and that each modified or added integration can successfully connect to the
+// external FreeScout service. It returns the list of integrations that were
+// deleted, if any.
+//
+// On successful return, the newFreeScoutIntgs slice is ready to be saved - it
+// may have been updated using the original integrations if the API token was
+// missing.
+func ValidateFreeScoutIntegrations(ctx context.Context, oriFreeScoutIntgsIndexed map[string]FreeScoutIntegration, newFreeScoutIntgs []*FreeScoutIntegration) (deleted []*FreeScoutIntegration, err error) {
+	newIndexed := make(map[string]*FreeScoutIntegration, len(newFreeScoutIntgs))
+	for i, new := range newFreeScoutIntgs {
+		key := new.uniqueKey()
+		// first check for uniqueness
+		if _, ok := newIndexed[key]; ok {
+			return nil, fmt.Errorf("duplicate FreeScout integration for url %s and mailbox id %v", new.URL, new.MailboxID)
+		}
+		newIndexed[key] = new
+
+		// check if existing integration is being edited
+		if old, ok := oriFreeScoutIntgsIndexed[key]; ok {
+			if old == *new {
+				// no further validation for unchanged integration
+				continue
+			}
+			// use stored API token if request does not contain new token
+			// intended only as a short-term accommodation for the frontend
+			// will be redesigned in dedicated endpoint for integration config
+			if new.APIToken == "" || new.APIToken == MaskedPassword {
+				new.APIToken = old.APIToken
+			}
+		}
+
+		// new or updated, test it
+		if err := makeTestFreeScoutRequest(ctx, new); err != nil {
+			return nil, fmt.Errorf("FreeScout integration at index %d: %w", i, err)
+		}
+	}
+
+	// collect any deleted integration
+	for key, intg := range oriFreeScoutIntgsIndexed {
+		intg := intg // do not take address of iteration variable
+		if _, ok := newIndexed[key]; !ok {
+			deleted = append(deleted, &intg)
+		}
+	}
+	return deleted, nil
+}
+
+func makeTestFreeScoutRequest(ctx context.Context, intg *FreeScoutIntegration) error {
+	intg.CustomerEmail = strings.TrimSpace(intg.CustomerEmail)
+	if intg.APIToken == "" || intg.APIToken == MaskedPassword {
+		return IntegrationTestError{Err: errors.New("FreeScout integration request failed: missing or invalid API token")}
+	}
+	if intg.MailboxID <= 0 {
+		return IntegrationTestError{Err: errors.New("FreeScout integration request failed: mailbox ID must be greater than 0")}
+	}
+	if intg.CustomerEmail == "" {
+		return IntegrationTestError{Err: errors.New("FreeScout integration request failed: customer email is required")}
+	}
+	client, err := externalsvc.NewFreeScoutClient(&externalsvc.FreeScoutOptions{
+		URL:           intg.URL,
+		APIToken:      intg.APIToken,
+		MailboxID:     intg.MailboxID,
+		CustomerEmail: intg.CustomerEmail,
+		AssignTo:      intg.AssignTo,
+	})
+	if err != nil {
+		return IntegrationTestError{Err: fmt.Errorf("FreeScout integration request failed: %w", err)}
+	}
+	if _, err := client.CreateFreeScoutConversation(ctx, "Fleet integration test", "This is a test conversation from Fleet."); err != nil {
+		return IntegrationTestError{Err: fmt.Errorf("FreeScout integration request failed: %w", err)}
+	}
+	return nil
+}
+
 const (
 	GoogleCalendarEmail      = "client_email"
 	GoogleCalendarPrivateKey = "private_key"
@@ -397,6 +551,7 @@ type GoogleCalendarIntegration struct {
 type Integrations struct {
 	Jira           []*JiraIntegration           `json:"jira"`
 	Zendesk        []*ZendeskIntegration        `json:"zendesk"`
+	Freescout      []*FreeScoutIntegration      `json:"freescout"`
 	GoogleCalendar []*GoogleCalendarIntegration `json:"google_calendar"`
 	// ConditionalAccessEnabled indicates whether conditional access is enabled/disabled for "No team".
 	ConditionalAccessEnabled optjson.Bool `json:"conditional_access_enabled"`
@@ -536,18 +691,33 @@ func ValidateEnabledVulnerabilitiesIntegrations(webhook VulnerabilitiesWebhookSe
 			zendeskEnabledCount++
 		}
 	}
+	var freescoutEnabledCount int
+	for _, freescout := range intgs.Freescout {
+		if freescout.EnableSoftwareVulnerabilities {
+			freescoutEnabledCount++
+		}
+	}
 
-	if webhookEnabled && (jiraEnabledCount > 0 || zendeskEnabledCount > 0) {
+	if webhookEnabled && (jiraEnabledCount > 0 || zendeskEnabledCount > 0 || freescoutEnabledCount > 0) {
 		invalid.Append("vulnerabilities", "cannot enable both webhook vulnerabilities and integration automations")
 	}
 	if jiraEnabledCount > 0 && zendeskEnabledCount > 0 {
 		invalid.Append("vulnerabilities", "cannot enable both jira integration and zendesk automations")
+	}
+	if jiraEnabledCount > 0 && freescoutEnabledCount > 0 {
+		invalid.Append("vulnerabilities", "cannot enable both jira integration and freescout automations")
+	}
+	if zendeskEnabledCount > 0 && freescoutEnabledCount > 0 {
+		invalid.Append("vulnerabilities", "cannot enable both zendesk integration and freescout automations")
 	}
 	if jiraEnabledCount > 1 {
 		invalid.Append("vulnerabilities", "cannot enable more than one jira integration")
 	}
 	if zendeskEnabledCount > 1 {
 		invalid.Append("vulnerabilities", "cannot enable more than one zendesk integration")
+	}
+	if freescoutEnabledCount > 1 {
+		invalid.Append("vulnerabilities", "cannot enable more than one freescout integration")
 	}
 	if webhookEnabled && webhook.DestinationURL == "" {
 		invalid.Append("destination_url", "destination_url is required to enable the vulnerabilities webhook")
@@ -572,18 +742,33 @@ func ValidateEnabledFailingPoliciesIntegrations(webhook FailingPoliciesWebhookSe
 			zendeskEnabledCount++
 		}
 	}
+	var freescoutEnabledCount int
+	for _, freescout := range intgs.Freescout {
+		if freescout.EnableFailingPolicies {
+			freescoutEnabledCount++
+		}
+	}
 
-	if webhookEnabled && (jiraEnabledCount > 0 || zendeskEnabledCount > 0) {
+	if webhookEnabled && (jiraEnabledCount > 0 || zendeskEnabledCount > 0 || freescoutEnabledCount > 0) {
 		invalid.Append("failing policies", "cannot enable both webhook failing policies and integration automations")
 	}
 	if jiraEnabledCount > 0 && zendeskEnabledCount > 0 {
 		invalid.Append("failing policies", "cannot enable both jira and zendesk automations")
+	}
+	if jiraEnabledCount > 0 && freescoutEnabledCount > 0 {
+		invalid.Append("failing policies", "cannot enable both jira and freescout automations")
+	}
+	if zendeskEnabledCount > 0 && freescoutEnabledCount > 0 {
+		invalid.Append("failing policies", "cannot enable both zendesk and freescout automations")
 	}
 	if jiraEnabledCount > 1 {
 		invalid.Append("failing policies", "cannot enable more than one jira integration")
 	}
 	if zendeskEnabledCount > 1 {
 		invalid.Append("failing policies", "cannot enable more than one zendesk integration")
+	}
+	if freescoutEnabledCount > 1 {
+		invalid.Append("failing policies", "cannot enable more than one freescout integration")
 	}
 	if webhookEnabled && webhook.DestinationURL == "" {
 		invalid.Append("destination_url", "destination_url is required to enable the failing policies webhook")
@@ -595,8 +780,9 @@ func ValidateEnabledFailingPoliciesIntegrations(webhook FailingPoliciesWebhookSe
 // integration structs.
 func ValidateEnabledFailingPoliciesTeamIntegrations(webhook FailingPoliciesWebhookSettings, teamIntgs TeamIntegrations, invalid *InvalidArgumentError) {
 	intgs := Integrations{
-		Jira:    make([]*JiraIntegration, len(teamIntgs.Jira)),
-		Zendesk: make([]*ZendeskIntegration, len(teamIntgs.Zendesk)),
+		Jira:      make([]*JiraIntegration, len(teamIntgs.Jira)),
+		Zendesk:   make([]*ZendeskIntegration, len(teamIntgs.Zendesk)),
+		Freescout: make([]*FreeScoutIntegration, len(teamIntgs.Freescout)),
 	}
 	for i, j := range teamIntgs.Jira {
 		intgs.Jira[i] = &JiraIntegration{
@@ -610,6 +796,13 @@ func ValidateEnabledFailingPoliciesTeamIntegrations(webhook FailingPoliciesWebho
 			URL:                   z.URL,
 			GroupID:               z.GroupID,
 			EnableFailingPolicies: z.EnableFailingPolicies,
+		}
+	}
+	for i, f := range teamIntgs.Freescout {
+		intgs.Freescout[i] = &FreeScoutIntegration{
+			URL:                   f.URL,
+			MailboxID:             f.MailboxID,
+			EnableFailingPolicies: f.EnableFailingPolicies,
 		}
 	}
 	ValidateEnabledFailingPoliciesIntegrations(webhook, intgs, invalid)
