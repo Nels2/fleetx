@@ -26,6 +26,7 @@ interface IAddIntegrationModalProps {
 const destinationOptions = [
   { label: "Jira", value: "jira" },
   { label: "Zendesk", value: "zendesk" },
+  { label: "FreeScout", value: "freescout" },
 ];
 
 const AddIntegrationModal = ({

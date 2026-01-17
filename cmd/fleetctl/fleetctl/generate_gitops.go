@@ -750,10 +750,11 @@ func (cmd *GenerateGitopsCommand) generateIntegrations(filePath string, integrat
 	} else {
 		result = result["team_integrations"].(map[string]interface{})
 
-		// We currently don't support configuring Jira and Zendesk integrations on the team.
+		// We currently don't support configuring Jira, Zendesk, and FreeScout integrations on the team.
 		// https://github.com/fleetdm/fleet/issues/20287
 		delete(result, "jira")
 		delete(result, "zendesk")
+		delete(result, "freescout")
 
 		// Team integrations don't have secrets right now, so just return as-is.
 		return result, nil
@@ -786,6 +787,15 @@ func (cmd *GenerateGitopsCommand) generateIntegrations(filePath string, integrat
 				cmd.Messages.SecretWarnings = append(cmd.Messages.SecretWarnings, SecretWarning{
 					Filename: "default.yml",
 					Key:      "integrations.zendesk.api_token",
+				})
+			}
+		}
+		if freescout, ok := result["freescout"]; ok && freescout != nil {
+			for _, intg := range freescout.([]interface{}) {
+				intg.(map[string]interface{})["api_token"] = cmd.AddComment(filePath, "TODO: Add your FreeScout API token here")
+				cmd.Messages.SecretWarnings = append(cmd.Messages.SecretWarnings, SecretWarning{
+					Filename: "default.yml",
+					Key:      "integrations.freescout.api_token",
 				})
 			}
 		}
@@ -981,7 +991,7 @@ func (cmd *GenerateGitopsCommand) generateTeamSettings(filePath string, team *fl
 	t := reflect.TypeOf(fleet.TeamConfig{})
 
 	// For "No Team" (team ID 0), only include webhook settings
-	// Note: Jira/Zendesk integrations are not supported at the team level (including No Team)
+	// Note: Jira/Zendesk/FreeScout integrations are not supported at the team level (including No Team)
 	// See https://github.com/fleetdm/fleet/issues/20287
 	if team.ID == 0 {
 		webhookSettings := map[string]any{

@@ -526,9 +526,10 @@ func (ds *Datastore) DeleteIntegrationsFromTeams(ctx context.Context, deletedInt
 		// ignore errors, it's ok for some integrations to not match with the
 		// batch of deleted integrations, we're only interested in knowing if
 		// some did match.
-		if matches, _ := tm.Config.Integrations.MatchWithIntegrations(deletedIntgs); len(matches.Jira)+len(matches.Zendesk) > 0 {
+		if matches, _ := tm.Config.Integrations.MatchWithIntegrations(deletedIntgs); len(matches.Jira)+len(matches.Zendesk)+len(matches.Freescout) > 0 {
 			delJira, _ := fleet.IndexJiraIntegrations(matches.Jira)
 			delZendesk, _ := fleet.IndexZendeskIntegrations(matches.Zendesk)
+			delFreeScout, _ := fleet.IndexFreeScoutIntegrations(matches.Freescout)
 
 			var keepJira []*fleet.TeamJiraIntegration
 			for _, tmIntg := range tm.Config.Integrations.Jira {
@@ -544,8 +545,16 @@ func (ds *Datastore) DeleteIntegrationsFromTeams(ctx context.Context, deletedInt
 				}
 			}
 
+			var keepFreeScout []*fleet.TeamFreeScoutIntegration
+			for _, tmIntg := range tm.Config.Integrations.Freescout {
+				if _, ok := delFreeScout[tmIntg.UniqueKey()]; !ok {
+					keepFreeScout = append(keepFreeScout, tmIntg)
+				}
+			}
+
 			tm.Config.Integrations.Jira = keepJira
 			tm.Config.Integrations.Zendesk = keepZendesk
+			tm.Config.Integrations.Freescout = keepFreeScout
 			if _, err := ds.writer(ctx).ExecContext(ctx, updateTeam, tm.Config, tm.ID); err != nil {
 				return ctxerr.Wrap(ctx, err, "update team config")
 			}

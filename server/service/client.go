@@ -1917,6 +1917,9 @@ func (c *Client) DoGitOps(
 		if zendesk, ok := integrations.(map[string]interface{})["zendesk"]; !ok || zendesk == nil {
 			integrations.(map[string]interface{})["zendesk"] = []interface{}{}
 		}
+		if freescout, ok := integrations.(map[string]interface{})["freescout"]; !ok || freescout == nil {
+			integrations.(map[string]interface{})["freescout"] = []interface{}{}
+		}
 		if googleCal, ok := integrations.(map[string]interface{})["google_calendar"]; !ok || googleCal == nil {
 			integrations.(map[string]interface{})["google_calendar"] = []interface{}{}
 		}

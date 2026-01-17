@@ -103,6 +103,7 @@ org_settings:
       enable_software_vulnerabilities: false
       group_id: 123456789
       url: https://some-zendesk-url.com
+    freescout: []
   mdm:
     apple_business_manager:
     - ios_team: "📱🏢 Company-owned mobile devices"

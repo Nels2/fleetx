@@ -16,6 +16,7 @@ import { SUPPORT_LINK } from "utilities/constants";
 import {
   IJiraIntegration,
   IZendeskIntegration,
+  IFreeScoutIntegration,
   IIntegration,
   IGlobalIntegrations,
   IIntegrationType,
@@ -54,6 +55,7 @@ interface ISoftwareAutomations {
   integrations: {
     jira: IJiraIntegration[];
     zendesk: IZendeskIntegration[];
+    freescout: IFreeScoutIntegration[];
   };
 }
 
@@ -102,6 +104,9 @@ const ManageAutomationsModal = ({
     ) ||
     !!softwareConfig?.integrations.zendesk?.some(
       (z) => z.enable_software_vulnerabilities
+    ) ||
+    !!softwareConfig?.integrations.freescout?.some(
+      (f) => f.enable_software_vulnerabilities
     );
 
   const softwareVulnerabilityAutomationEnabled =
@@ -123,6 +128,10 @@ const ManageAutomationsModal = ({
   const [zendeskIntegrationsIndexed, setZendeskIntegrationsIndexed] = useState<
     IIntegration[]
   >();
+  const [
+    freescoutIntegrationsIndexed,
+    setFreeScoutIntegrationsIndexed,
+  ] = useState<IIntegration[]>();
   const [allIntegrationsIndexed, setAllIntegrationsIndexed] = useState<
     IIntegration[]
   >();
@@ -183,15 +192,29 @@ const ManageAutomationsModal = ({
             })
           : [];
         setZendeskIntegrationsIndexed(addZendeskIndexed);
+        const addFreeScoutIndexed = data.freescout
+          ? data.freescout.map((integration, index) => {
+              return {
+                ...integration,
+                originalIndex: index,
+                type: "freescout" as IIntegrationType,
+              };
+            })
+          : [];
+        setFreeScoutIntegrationsIndexed(addFreeScoutIndexed);
       },
     }
   );
 
   useEffect(() => {
-    if (jiraIntegrationsIndexed && zendeskIntegrationsIndexed) {
-      const combineDataSets = jiraIntegrationsIndexed.concat(
-        zendeskIntegrationsIndexed
-      );
+    if (
+      jiraIntegrationsIndexed &&
+      zendeskIntegrationsIndexed &&
+      freescoutIntegrationsIndexed
+    ) {
+      const combineDataSets = jiraIntegrationsIndexed
+        .concat(zendeskIntegrationsIndexed)
+        .concat(freescoutIntegrationsIndexed);
       setAllIntegrationsIndexed(
         combineDataSets?.map((integration, index) => {
           return { ...integration, dropdownIndex: index };
@@ -201,6 +224,7 @@ const ManageAutomationsModal = ({
   }, [
     jiraIntegrationsIndexed,
     zendeskIntegrationsIndexed,
+    freescoutIntegrationsIndexed,
     setAllIntegrationsIndexed,
   ]);
 
@@ -245,6 +269,7 @@ const ManageAutomationsModal = ({
       integrations: {
         jira: integrations?.jira || [],
         zendesk: integrations?.zendesk || [],
+        freescout: integrations?.freescout || [],
       },
     };
 
@@ -269,6 +294,15 @@ const ManageAutomationsModal = ({
           }
         );
         configSoftwareAutomations.integrations.zendesk = disableAllZendesk;
+        const disableAllFreeScout = configSoftwareAutomations.integrations.freescout.map(
+          (integration) => {
+            return {
+              ...integration,
+              enable_software_vulnerabilities: false,
+            };
+          }
+        );
+        configSoftwareAutomations.integrations.freescout = disableAllFreeScout;
         return true;
       }
       if (!integrationEnabled) {
@@ -297,6 +331,15 @@ const ManageAutomationsModal = ({
           }
         );
         configSoftwareAutomations.integrations.zendesk = disableAllZendesk;
+        const disableAllFreeScout = configSoftwareAutomations.integrations.freescout.map(
+          (integration) => {
+            return {
+              ...integration,
+              enable_software_vulnerabilities: false,
+            };
+          }
+        );
+        configSoftwareAutomations.integrations.freescout = disableAllFreeScout;
         return true;
       }
       // set enable_vulnerabilities_webhook to false
@@ -328,6 +371,18 @@ const ManageAutomationsModal = ({
         }
       );
       configSoftwareAutomations.integrations.zendesk = enableSelectedZendeskIntegrationOnly;
+      const enableSelectedFreeScoutIntegrationOnly = configSoftwareAutomations.integrations.freescout.map(
+        (integration, index) => {
+          return {
+            ...integration,
+            enable_software_vulnerabilities:
+              selectedIntegration?.type === "freescout"
+                ? index === selectedIntegration?.originalIndex
+                : false,
+          };
+        }
+      );
+      configSoftwareAutomations.integrations.freescout = enableSelectedFreeScoutIntegrationOnly;
       return true;
     };
 
@@ -342,7 +397,7 @@ const ManageAutomationsModal = ({
     const integrationOptions = allIntegrationsIndexed?.map((i) => {
       return {
         value: String(i.dropdownIndex),
-        label: `${i.url} - ${i.project_key || i.group_id}`,
+        label: `${i.url} - ${i.project_key || i.group_id || i.mailbox_id}`,
       };
     });
     return integrationOptions;
@@ -378,7 +433,9 @@ const ManageAutomationsModal = ({
         </div>
         {(jiraIntegrationsIndexed && jiraIntegrationsIndexed.length > 0) ||
         (zendeskIntegrationsIndexed &&
-          zendeskIntegrationsIndexed.length > 0) ? (
+          zendeskIntegrationsIndexed.length > 0) ||
+        (freescoutIntegrationsIndexed &&
+          freescoutIntegrationsIndexed.length > 0) ? (
           <Dropdown
             disabled={gitOpsModeEnabled}
             searchable
@@ -469,7 +526,9 @@ const ManageAutomationsModal = ({
     const hasIntegrations = !(
       ((jiraIntegrationsIndexed && jiraIntegrationsIndexed.length === 0) ||
         (zendeskIntegrationsIndexed &&
-          zendeskIntegrationsIndexed.length === 0)) &&
+          zendeskIntegrationsIndexed.length === 0) ||
+        (freescoutIntegrationsIndexed &&
+          freescoutIntegrationsIndexed.length === 0)) &&
       integrationEnabled &&
       softwareAutomationsEnabled
     );
