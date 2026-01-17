@@ -17,6 +17,7 @@
       "id": 12,
       "integrations": {
         "conditional_access_enabled": null,
+        "freescout": null,
         "google_calendar": null,
         "jira": null,
         "zendesk": null
@@ -93,6 +94,7 @@
       "id": 12,
       "integrations": {
         "conditional_access_enabled": null,
+        "freescout": null,
         "google_calendar": null,
         "jira": null,
         "zendesk": null
@@ -190,6 +192,7 @@
       "id": 32,
       "integrations": {
         "conditional_access_enabled": null,
+        "freescout": null,
         "google_calendar": null,
         "jira": null,
         "zendesk": null
@@ -281,6 +284,7 @@
       "id": 32,
       "integrations": {
         "conditional_access_enabled": null,
+        "freescout": null,
         "google_calendar": null,
         "jira": null,
         "zendesk": null
