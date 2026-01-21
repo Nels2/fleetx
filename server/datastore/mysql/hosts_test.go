@@ -23,11 +23,11 @@ import (
 	"github.com/fleetdm/fleet/v4/server"
 	"github.com/fleetdm/fleet/v4/server/config"
 	"github.com/fleetdm/fleet/v4/server/contexts/license"
-	"github.com/fleetdm/fleet/v4/server/datastore/mysql/common_mysql"
 	"github.com/fleetdm/fleet/v4/server/fleet"
 	"github.com/fleetdm/fleet/v4/server/mdm/android"
 	"github.com/fleetdm/fleet/v4/server/mdm/apple/mobileconfig"
 	"github.com/fleetdm/fleet/v4/server/mdm/nanodep/godep"
+	common_mysql "github.com/fleetdm/fleet/v4/server/platform/mysql"
 	"github.com/fleetdm/fleet/v4/server/ptr"
 	"github.com/fleetdm/fleet/v4/server/test"
 	"github.com/google/uuid"
@@ -149,6 +149,7 @@ func TestHosts(t *testing.T) {
 		{"UpdateOsqueryIntervals", testUpdateOsqueryIntervals},
 		{"UpdateRefetchRequested", testUpdateRefetchRequested},
 		{"LoadHostByDeviceAuthToken", testHostsLoadHostByDeviceAuthToken},
+		{"GetDeviceAuthToken", testHostsGetDeviceAuthToken},
 		{"SetOrUpdateDeviceAuthToken", testHostsSetOrUpdateDeviceAuthToken},
 		{"OSVersions", testOSVersions},
 		{"DeleteHosts", testHostsDeleteHosts},
@@ -4202,7 +4203,7 @@ func testHostsListByBatchScriptExecutionStatus(t *testing.T, ds *Datastore) {
 		ExecutionID: host1Upcoming[0].ExecutionID,
 		Output:      "foo",
 		ExitCode:    0,
-	})
+	}, nil)
 	require.NoError(t, err)
 
 	// Simulate that host2 errored out
@@ -4213,7 +4214,7 @@ func testHostsListByBatchScriptExecutionStatus(t *testing.T, ds *Datastore) {
 		ExecutionID: host2Upcoming[0].ExecutionID,
 		Output:      "bar",
 		ExitCode:    1,
-	})
+	}, nil)
 	require.NoError(t, err)
 
 	// Simulate that host3 cancelled the script execution
@@ -8037,6 +8038,66 @@ func testHostsSetOrUpdateDeviceAuthToken(t *testing.T, ds *Datastore) {
 	require.True(t, h2T2.Equal(h2T3))
 }
 
+func testHostsGetDeviceAuthToken(t *testing.T, ds *Datastore) {
+	host, err := ds.NewHost(context.Background(), &fleet.Host{
+		DetailUpdatedAt: time.Now(),
+		LabelUpdatedAt:  time.Now(),
+		PolicyUpdatedAt: time.Now(),
+		SeenTime:        time.Now(),
+		NodeKey:         ptr.String("1"),
+		UUID:            "1",
+		OsqueryHostID:   ptr.String("1"),
+		Hostname:        "foo.local",
+		PrimaryIP:       "192.168.1.1",
+		PrimaryMac:      "30-65-EC-6F-C4-60",
+	})
+	require.NoError(t, err)
+	host2, err := ds.NewHost(context.Background(), &fleet.Host{
+		DetailUpdatedAt: time.Now(),
+		LabelUpdatedAt:  time.Now(),
+		PolicyUpdatedAt: time.Now(),
+		SeenTime:        time.Now(),
+		NodeKey:         ptr.String("2"),
+		UUID:            "2",
+		OsqueryHostID:   ptr.String("2"),
+		Hostname:        "foo.local2",
+		PrimaryIP:       "192.168.1.2",
+		PrimaryMac:      "30-65-EC-6F-C4-61",
+	})
+	require.NoError(t, err)
+
+	token1 := "token1"
+	err = ds.SetOrUpdateDeviceAuthToken(context.Background(), host.ID, token1)
+	require.NoError(t, err)
+
+	token2 := "token2"
+	err = ds.SetOrUpdateDeviceAuthToken(context.Background(), host2.ID, token2)
+	require.NoError(t, err)
+
+	t1, err := ds.GetDeviceAuthToken(context.Background(), host.ID)
+	require.NoError(t, err)
+	require.Equal(t, t1, token1)
+
+	t2, err := ds.GetDeviceAuthToken(context.Background(), host2.ID)
+	require.NoError(t, err)
+	require.Equal(t, t2, token2)
+
+	token2Updated := "token2_updated"
+	err = ds.SetOrUpdateDeviceAuthToken(context.Background(), host2.ID, token2Updated)
+	require.NoError(t, err)
+
+	t1, err = ds.GetDeviceAuthToken(context.Background(), host.ID)
+	require.NoError(t, err)
+	require.Equal(t, t1, token1)
+
+	t2, err = ds.GetDeviceAuthToken(context.Background(), host2.ID)
+	require.NoError(t, err)
+	require.Equal(t, t2, token2Updated)
+
+	_, err = ds.GetDeviceAuthToken(context.Background(), 99)
+	require.Error(t, err)
+}
+
 func testOSVersions(t *testing.T, ds *Datastore) {
 	// empty tables
 	err := ds.UpdateOSVersions(context.Background())
@@ -8492,7 +8553,7 @@ func testHostsDeleteHosts(t *testing.T, ds *Datastore) {
 	_, _, err = ds.SetHostScriptExecutionResult(context.Background(), &fleet.HostScriptResultPayload{
 		HostID:      host.ID,
 		ExecutionID: hsr.ExecutionID,
-	})
+	}, nil)
 	require.NoError(t, err)
 
 	_, err = ds.writer(context.Background()).Exec(`
@@ -8663,6 +8724,10 @@ func testHostsDeleteHosts(t *testing.T, ds *Datastore) {
 		INSERT INTO conditional_access_scep_certificates (serial, host_id, name, not_valid_before, not_valid_after, certificate_pem, revoked)
 		VALUES (?, ?, ?, ?, ?, ?, ?)
 	`, caCertSerial, host.ID, "test-ca-host", time.Now().Add(-1*time.Hour), time.Now().Add(24*time.Hour), "-----BEGIN CERTIFICATE-----", false)
+	require.NoError(t, err)
+
+	locData := fleet.HostLocationData{HostID: host.ID, Latitude: 42.42, Longitude: -42.42}
+	err = ds.InsertHostLocationData(ctx, locData)
 	require.NoError(t, err)
 
 	// Check there's an entry for the host in all the associated tables.

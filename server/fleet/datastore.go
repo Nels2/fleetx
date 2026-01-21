@@ -48,6 +48,8 @@ type InstallerStore interface {
 
 // Datastore combines all the interfaces in the Fleet DAL
 type Datastore interface {
+	GetsAppConfig
+	AccessesMDMConfigAssets
 	health.Checker
 
 	CarveStore
@@ -59,6 +61,9 @@ type Datastore interface {
 	// HasUsers returns whether Fleet has any users registered
 	HasUsers(ctx context.Context) (bool, error)
 	ListUsers(ctx context.Context, opt UserListOptions) ([]*User, error)
+	// UsersByIDs returns users matching the provided IDs. This is more efficient
+	// than ListUsers when you only need specific users by their IDs.
+	UsersByIDs(ctx context.Context, ids []uint) ([]*User, error)
 	UserByEmail(ctx context.Context, email string) (*User, error)
 	UserByID(ctx context.Context, id uint) (*User, error)
 	UserOrDeletedUserByID(ctx context.Context, id uint) (*User, error)
@@ -66,6 +71,8 @@ type Datastore interface {
 	SaveUsers(ctx context.Context, users []*User) error
 	// DeleteUser permanently deletes the user identified by the provided ID.
 	DeleteUser(ctx context.Context, id uint) error
+	// CountGlobalAdmins returns the count of users with the global admin role.
+	CountGlobalAdmins(ctx context.Context) (int, error)
 	// PendingEmailChange creates a record with a pending email change for a user identified by uid. The change record
 	// is keyed by a unique token. The token is emailed to the user with a link that they can use to confirm the change.
 	PendingEmailChange(ctx context.Context, userID uint, newEmail, token string) error
@@ -366,6 +373,8 @@ type Datastore interface {
 	LoadHostByDeviceAuthToken(ctx context.Context, authToken string, tokenTTL time.Duration) (*Host, error)
 	// SetOrUpdateDeviceAuthToken inserts or updates the auth token for a host.
 	SetOrUpdateDeviceAuthToken(ctx context.Context, hostID uint, authToken string) error
+	// GetDeviceAuthToken returns the current auth token for a given host
+	GetDeviceAuthToken(ctx context.Context, hostID uint) (string, error)
 
 	// FailingPoliciesCount returns the number of failling policies for 'host'
 	FailingPoliciesCount(ctx context.Context, host *Host) (uint, error)
@@ -481,7 +490,6 @@ type Datastore interface {
 	// AppConfigStore contains method for saving and retrieving application configuration
 
 	NewAppConfig(ctx context.Context, info *AppConfig) (*AppConfig, error)
-	AppConfig(ctx context.Context) (*AppConfig, error)
 	SaveAppConfig(ctx context.Context, info *AppConfig) error
 
 	// GetEnrollSecrets gets the enroll secrets for a team (or global if teamID is nil).
@@ -683,8 +691,7 @@ type Datastore interface {
 	GetPastActivityDataForInHouseAppInstall(ctx context.Context, commandResults *mdm.CommandResults) (*User, *ActivityTypeInstalledSoftware, error)
 
 	// SetHostSoftwareInstallResult records the result of a software installation
-	// attempt on the host.
-	SetHostSoftwareInstallResult(ctx context.Context, result *HostSoftwareInstallResultPayload) (wasCanceled bool, err error)
+	SetHostSoftwareInstallResult(ctx context.Context, result *HostSoftwareInstallResultPayload, attemptNumber *int) (wasCanceled bool, err error)
 
 	// CreateIntermediateInstallFailureRecord creates a completed failure record for an
 	// installation attempt that will be retried, while keeping the original pending.
@@ -692,10 +699,6 @@ type Datastore interface {
 	// install UUID and retry ordinal) to support idempotency. This method is for
 	// persistence/bookkeeping only and must not be used to trigger user-visible side effects.
 	CreateIntermediateInstallFailureRecord(ctx context.Context, result *HostSoftwareInstallResultPayload) (string, error)
-
-	// UploadedSoftwareExists checks if a software title with the given bundle identifier exists in
-	// the given team.
-	UploadedSoftwareExists(ctx context.Context, bundleIdentifier string, teamID *uint) (bool, error)
 
 	// NewSoftwareCategory creates a new category for software.
 	NewSoftwareCategory(ctx context.Context, name string) (*SoftwareCategory, error)
@@ -723,6 +726,9 @@ type Datastore interface {
 	// it was installed on the host).
 	SetVPPInstallAsFailed(ctx context.Context, hostID uint, installUUID, verificationUUID string) error
 	MarkAllPendingAppleVPPAndInHouseInstallsAsFailed(ctx context.Context, jobName string) error
+
+	CheckConflictingInstallerExists(ctx context.Context, teamID *uint, bundleIdentifier, platform string) (bool, error)
+	CheckConflictingInHouseAppExists(ctx context.Context, teamID *uint, bundleIdentifier, platform string) (bool, error)
 
 	///////////////////////////////////////////////////////////////////////////////
 	// OperatingSystemsStore
@@ -865,6 +871,14 @@ type Datastore interface {
 	TeamPolicy(ctx context.Context, teamID uint, policyID uint) (*Policy, error)
 
 	CleanupPolicyMembership(ctx context.Context, now time.Time) error
+	// IsPolicyFailing checks if a policy is currently failing for a given host.
+	IsPolicyFailing(ctx context.Context, policyID, hostID uint) (bool, error)
+	// CountHostSoftwareInstallAttempts counts how many install attempts exist for a specific
+	// host, software installer, and policy combination. Used to calculate attempt_number.
+	CountHostSoftwareInstallAttempts(ctx context.Context, hostID, softwareInstallerID, policyID uint) (int, error)
+	// CountHostScriptAttempts counts how many script execution attempts exist for a specific
+	// host, script, and policy combination. Used to calculate attempt_number.
+	CountHostScriptAttempts(ctx context.Context, hostID, scriptID, policyID uint) (int, error)
 	// IncrementPolicyViolationDays increments the aggregate count of policy violation days. One
 	// policy violation day is added for each policy that a host is failing as of the time the count
 	// is incremented. The count only increments once per 24-hour interval. If the interval has not
@@ -1576,41 +1590,6 @@ type Datastore interface {
 	// GetMDMAppleOSUpdatesSettingsByHostSerial returns applicable Apple OS update settings (if any)
 	// for the host with the given serial number alongside the host's platform. The host must be DEP assigned to Fleet.
 	GetMDMAppleOSUpdatesSettingsByHostSerial(ctx context.Context, hostSerial string) (string, *AppleOSUpdateSettings, error)
-
-	// InsertMDMConfigAssets inserts MDM related config assets, such as SCEP and APNS certs and keys.
-	// tx is optional and can be used to pass an existing transaction.
-	InsertMDMConfigAssets(ctx context.Context, assets []MDMConfigAsset, tx sqlx.ExtContext) error
-	// InsertOrReplaceMDMConfigAsset inserts or updates an encrypted asset.
-	InsertOrReplaceMDMConfigAsset(ctx context.Context, asset MDMConfigAsset) error
-
-	// GetAllMDMConfigAssetsByName returns the requested config assets.
-	//
-	// If it doesn't find all the assets requested, it returns a `mysql.ErrPartialResult` error.
-	// The queryerContext is optional and can be used to pass a transaction.
-	GetAllMDMConfigAssetsByName(ctx context.Context, assetNames []MDMAssetName,
-		queryerContext sqlx.QueryerContext) (map[MDMAssetName]MDMConfigAsset, error)
-
-	// GetAllMDMConfigAssetsHashes behaves like
-	// GetAllMDMConfigAssetsByName, but only returns a sha256 checksum of
-	// each asset
-	//
-	// If it doesn't find all the assets requested, it returns a `mysql.ErrPartialResult`
-	GetAllMDMConfigAssetsHashes(ctx context.Context, assetNames []MDMAssetName) (map[MDMAssetName]string, error)
-
-	// DeleteMDMConfigAssetsByName soft deletes the given MDM config assets.
-	DeleteMDMConfigAssetsByName(ctx context.Context, assetNames []MDMAssetName) error
-
-	// HardDeleteMDMConfigAsset permanently deletes the given MDM config asset.
-	HardDeleteMDMConfigAsset(ctx context.Context, assetName MDMAssetName) error
-
-	// ReplaceMDMConfigAssets replaces (soft delete if they exist + insert) `MDMConfigAsset`s in a
-	// single transaction. Useful for "renew" flows where users are updating the assets with newly
-	// generated ones.
-	// tx parameter is optional and can be used to pass an existing transaction.
-	ReplaceMDMConfigAssets(ctx context.Context, assets []MDMConfigAsset, tx sqlx.ExtContext) error
-
-	// GetAllCAConfigAssetsByType returns the config assets for DigiCert and custom SCEP CAs.
-	GetAllCAConfigAssetsByType(ctx context.Context, assetType CAConfigAssetType) (map[string]CAConfigAsset, error)
 	GetCAConfigAsset(ctx context.Context, name string, assetType CAConfigAssetType) (*CAConfigAsset, error)
 	SaveCAConfigAssets(ctx context.Context, assets []CAConfigAsset) error
 	DeleteCAConfigAssets(ctx context.Context, names []string) error
@@ -1850,10 +1829,8 @@ type Datastore interface {
 	// just the script to run information (result is not yet available).
 	NewHostScriptExecutionRequest(ctx context.Context, request *HostScriptRequestPayload) (*HostScriptResult, error)
 	// SetHostScriptExecutionResult stores the result of a host script execution
-	// and returns the updated host script result record. Note that it does not
-	// fail if the script execution request does not exist, in this case it will
 	// return nil, "", nil. action is populated if this script was an MDM action (lock/unlock/wipe/uninstall).
-	SetHostScriptExecutionResult(ctx context.Context, result *HostScriptResultPayload) (hsr *HostScriptResult, action string, err error)
+	SetHostScriptExecutionResult(ctx context.Context, result *HostScriptResultPayload, attemptNumber *int) (hsr *HostScriptResult, action string, err error)
 	// GetHostScriptExecutionResult returns the result of a host script
 	// execution. It returns the host script results even if no results have been
 	// received, it is the caller's responsibility to check if that was the case
@@ -1965,6 +1942,11 @@ type Datastore interface {
 	// CleanAppleMDMLock cleans the lock status and pin for a macOS device
 	// after it has been unlocked.
 	CleanAppleMDMLock(ctx context.Context, hostUUID string) error
+
+	InsertHostLocationData(ctx context.Context, locData HostLocationData) error
+	// GetHostLocationData gets the given host's location data from the Fleet database, if it exists.
+	GetHostLocationData(ctx context.Context, hostID uint) (*HostLocationData, error)
+	DeleteHostLocationData(ctx context.Context, hostID uint) error
 
 	// CleanupUnusedScriptContents will remove script contents that have no references to them from
 	// the scripts or host_script_results tables.
@@ -2083,6 +2065,9 @@ type Datastore interface {
 	// is acknowledged but not yet verified (installation is still ongoing on the device and/or Fleet hasn't verified
 	// the installation via InstalledApplicationList).
 	MapAdamIDsPendingInstallVerification(ctx context.Context, hostID uint) (adamIDs map[string]struct{}, err error)
+
+	// MapAdamIDsRecentInstalls returns a set of Adam IDs for the host that have been installed within the provided seconds.
+	MapAdamIDsRecentInstalls(ctx context.Context, hostID uint, seconds int) (adamIDs map[string]struct{}, err error)
 
 	// GetTitleInfoFromVPPAppsTeamsID returns title ID and VPP app name corresponding to the supplied team VPP app PK
 	GetTitleInfoFromVPPAppsTeamsID(ctx context.Context, vppAppsTeamsID uint) (*PolicySoftwareTitle, error)
@@ -2556,8 +2541,8 @@ type Datastore interface {
 	// update, delete). Deletes are processed first based on name and type. Adds and updates are
 	// processed together as upserts using INSERT...ON DUPLICATE KEY UPDATE.
 	BatchApplyCertificateAuthorities(ctx context.Context, ops CertificateAuthoritiesBatchOperations) error
-	// UpdateCertificateStatus allows a host to update the installation status of a certificate given its template.
-	UpsertCertificateStatus(ctx context.Context, hostUUID string, certificateTemplateID uint, status MDMDeliveryStatus, detail *string, operationType MDMOperationType) error
+	// UpsertCertificateStatus allows a host to update the installation status of a certificate given its template.
+	UpsertCertificateStatus(ctx context.Context, update *CertificateStatusUpdate) error
 
 	// BatchUpsertCertificateTemplates upserts a batch of certificates.
 	// Returns a map of team IDs that had certificates inserted or updated.
@@ -2620,6 +2605,18 @@ type Datastore interface {
 	// for a specific host for removal.
 	SetHostCertificateTemplatesToPendingRemoveForHost(ctx context.Context, hostUUID string) error
 
+	// GetAndroidCertificateTemplatesForRenewal returns certificate templates that are approaching
+	// expiration and need to be renewed. Uses the same threshold logic as Apple/Windows:
+	// - If validity period > 30 days: renew within 30 days of expiration
+	// - If validity period <= 30 days: renew within half the validity period of expiration
+	// Only returns certificates with status 'delivered' or 'verified' and operation_type 'install'.
+	GetAndroidCertificateTemplatesForRenewal(ctx context.Context, limit int) ([]HostCertificateTemplateForRenewal, error)
+
+	// SetAndroidCertificateTemplatesForRenewal marks the specified certificate templates for renewal
+	// by setting status to 'pending', clearing validity fields, and generating a new UUID.
+	// The new UUID signals to the Android agent that the certificate needs renewal.
+	SetAndroidCertificateTemplatesForRenewal(ctx context.Context, templates []HostCertificateTemplateForRenewal) error
+
 	// GetCurrentTime gets the current time from the database
 	GetCurrentTime(ctx context.Context) (time.Time, error)
 
@@ -2634,6 +2631,14 @@ type Datastore interface {
 	// ResendWindowsMDMCommand marks the specified Windows MDM command for resend
 	// by inserting a new command entry, command queue, but also updates the host profile reference.
 	ResendWindowsMDMCommand(ctx context.Context, mdmDeviceId string, newCmd *MDMWindowsCommand, oldCmd *MDMWindowsCommand) error
+
+	// GetHostVPPInstallByCommandUUID retrieves the Apple VPP app install record
+	// for the given command UUID.
+	GetHostVPPInstallByCommandUUID(ctx context.Context, commandUUID string) (*HostVPPSoftwareInstallLite, error)
+
+	// RetryVPPInstall retries a single VPP install that failed for the host.
+	// It makes sure to queue a new nano command and update the command_uuid in the host_vpp_software_installs table, as well as the execution ID for the activity.
+	RetryVPPInstall(ctx context.Context, vppInstall *HostVPPSoftwareInstallLite) error
 }
 
 type AndroidDatastore interface {
@@ -2879,4 +2884,38 @@ type EntityUsingSecret struct {
 	Name string
 	// TeamName is the name of the team the entity belongs to.
 	TeamName string
+}
+
+type AccessesMDMConfigAssets interface {
+	// InsertMDMConfigAssets inserts MDM-related config assets, such as SCEP and APNS certs and keys.
+	// tx is used to pass an existing transaction; if nil, a new transaction will be created inside the call
+	InsertMDMConfigAssets(ctx context.Context, assets []MDMConfigAsset, tx sqlx.ExtContext) error
+	// InsertOrReplaceMDMConfigAsset inserts or updates an encrypted asset.
+	InsertOrReplaceMDMConfigAsset(ctx context.Context, asset MDMConfigAsset) error
+	// GetAllMDMConfigAssetsByName returns the requested config assets.
+	//
+	// If it doesn't find all the assets requested, it returns a `mysql.ErrPartialResult` error.
+	// The queryerContext is optional and can be used to pass a transaction.
+	GetAllMDMConfigAssetsByName(ctx context.Context, assetNames []MDMAssetName,
+		queryerContext sqlx.QueryerContext) (map[MDMAssetName]MDMConfigAsset, error)
+	// GetAllMDMConfigAssetsHashes behaves like
+	// GetAllMDMConfigAssetsByName, but only returns a sha256 checksum of
+	// each asset
+	//
+	// If it doesn't find all the assets requested, it returns a `mysql.ErrPartialResult`
+	GetAllMDMConfigAssetsHashes(ctx context.Context, assetNames []MDMAssetName) (map[MDMAssetName]string, error)
+	// DeleteMDMConfigAssetsByName soft deletes the given MDM config assets.
+	DeleteMDMConfigAssetsByName(ctx context.Context, assetNames []MDMAssetName) error
+	// HardDeleteMDMConfigAsset permanently deletes the given MDM config asset.
+	HardDeleteMDMConfigAsset(ctx context.Context, assetName MDMAssetName) error
+	// ReplaceMDMConfigAssets replaces (soft delete if they exist + insert) `MDMConfigAsset`s in a
+	// single transaction. Useful for "renew" flows where users are updating the assets with newly
+	// generated ones.
+	// tx parameter is optional and can be used to pass an existing transaction.
+	ReplaceMDMConfigAssets(ctx context.Context, assets []MDMConfigAsset, tx sqlx.ExtContext) error
+	// GetAllCAConfigAssetsByType returns the config assets for DigiCert and custom SCEP CAs.
+	GetAllCAConfigAssetsByType(ctx context.Context, assetType CAConfigAssetType) (map[string]CAConfigAsset, error)
+}
+type GetsAppConfig interface {
+	AppConfig(ctx context.Context) (*AppConfig, error)
 }
