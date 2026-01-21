@@ -95,7 +95,7 @@ func (f *FreeScout) CreateFreeScoutConversation(ctx context.Context, subject, me
 				},
 			},
 		},
-		Imported: true,
+		Imported: false,
 		Status:   "active",
 	}
 	if f.opts.AssignTo > 0 {
