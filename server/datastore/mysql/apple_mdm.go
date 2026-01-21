@@ -20,13 +20,13 @@ import (
 
 	"github.com/fleetdm/fleet/v4/server"
 	"github.com/fleetdm/fleet/v4/server/contexts/ctxerr"
-	"github.com/fleetdm/fleet/v4/server/datastore/mysql/common_mysql"
 	"github.com/fleetdm/fleet/v4/server/fleet"
 	fleetmdm "github.com/fleetdm/fleet/v4/server/mdm"
 	apple_mdm "github.com/fleetdm/fleet/v4/server/mdm/apple"
 	"github.com/fleetdm/fleet/v4/server/mdm/apple/mobileconfig"
 	"github.com/fleetdm/fleet/v4/server/mdm/nanodep/godep"
 	"github.com/fleetdm/fleet/v4/server/mdm/nanomdm/mdm"
+	common_mysql "github.com/fleetdm/fleet/v4/server/platform/mysql"
 	"github.com/fleetdm/fleet/v4/server/ptr"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -6248,12 +6248,20 @@ GROUP BY h.id`
 
 func (ds *Datastore) GetEnrollmentIDsWithPendingMDMAppleCommands(ctx context.Context) (uuids []string, err error) {
 	const stmt = `
-SELECT DISTINCT neq.id
-FROM nano_enrollment_queue neq
-INNER JOIN nano_enrollments ne ON ne.id = neq.id
-LEFT JOIN nano_command_results ncr ON ncr.command_uuid = neq.command_uuid AND ncr.id = neq.id
-WHERE neq.active = 1 AND ne.enabled=1 AND ncr.status IS NULL
-AND neq.created_at >= NOW() - INTERVAL 7 DAY
+SELECT DISTINCT
+    neq.id
+FROM
+    nano_enrollment_queue neq
+    INNER JOIN nano_enrollments ne ON ne.id = neq.id
+    LEFT JOIN nano_command_results ncr ON ncr.command_uuid = neq.command_uuid
+    AND ncr.id = neq.id
+WHERE
+    neq.active = 1
+    AND ne.enabled = 1
+    AND ncr.status IS NULL
+    AND neq.created_at >= NOW() - INTERVAL 7 DAY
+    AND neq.priority IN (0, 1)
+ORDER BY RAND()
 LIMIT 500
 `
 
@@ -7074,4 +7082,39 @@ func (ds *Datastore) SetLockCommandForLostModeCheckin(ctx context.Context, hostI
 	`
 	_, err := ds.writer(ctx).ExecContext(ctx, stmt, hostID, commandUUID)
 	return ctxerr.Wrap(ctx, err, "set lock ref for lost mode checkin")
+}
+
+func (ds *Datastore) InsertHostLocationData(ctx context.Context, locData fleet.HostLocationData) error {
+	const stmt = `
+		INSERT INTO host_last_known_locations
+			(host_id, latitude, longitude)
+		VALUES (?, ?, ?)
+		ON DUPLICATE KEY UPDATE
+			latitude = VALUES(latitude),
+			longitude = VALUES(longitude)
+	`
+	_, err := ds.writer(ctx).ExecContext(ctx, stmt, locData.HostID, locData.Latitude, locData.Longitude)
+	return ctxerr.Wrap(ctx, err, "insert host location data")
+}
+
+func (ds *Datastore) GetHostLocationData(ctx context.Context, hostID uint) (*fleet.HostLocationData, error) {
+	var ret fleet.HostLocationData
+
+	err := sqlx.GetContext(ctx, ds.reader(ctx), &ret, "SELECT host_id, latitude, longitude FROM host_last_known_locations WHERE host_id = ?", hostID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ctxerr.Wrap(ctx, notFound("HostLocation"))
+		}
+		return nil, ctxerr.Wrap(ctx, err, "get host location data")
+	}
+
+	return &ret, nil
+}
+
+func (ds *Datastore) DeleteHostLocationData(ctx context.Context, hostID uint) error {
+	const stmt = `
+	 	DELETE FROM host_last_known_locations WHERE host_id = ?
+	`
+	_, err := ds.writer(ctx).ExecContext(ctx, stmt, hostID)
+	return ctxerr.Wrap(ctx, err, "delete host location data")
 }
