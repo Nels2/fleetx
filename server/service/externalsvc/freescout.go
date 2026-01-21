@@ -65,6 +65,14 @@ type freeScoutThread struct {
 	Customer *freeScoutCustomer `json:"customer,omitempty"`
 }
 
+type freeScoutThreadPayload struct {
+	Type     string             `json:"type"`
+	Text     string             `json:"text"`
+	Customer *freeScoutCustomer `json:"customer,omitempty"`
+	Imported bool               `json:"imported"`
+	Status   string             `json:"status,omitempty"`
+}
+
 type freeScoutConversationPayload struct {
 	Type      string             `json:"type"`
 	MailboxID int64              `json:"mailboxId"`
@@ -76,9 +84,30 @@ type freeScoutConversationPayload struct {
 	Status    string             `json:"status,omitempty"`
 }
 
+type freeScoutConversationsResponse struct {
+	Embedded struct {
+		Conversations []freeScoutConversation `json:"conversations"`
+	} `json:"_embedded"`
+}
+
+type freeScoutConversation struct {
+	ID int64 `json:"id"`
+}
+
 // CreateFreeScoutConversation creates a conversation on the FreeScout server targeted by the FreeScout client.
 // It returns the created conversation ID or an error.
 func (f *FreeScout) CreateFreeScoutConversation(ctx context.Context, subject, message string) (int64, error) {
+	existingID, err := f.findExistingConversationID(ctx, subject)
+	if err != nil {
+		return 0, err
+	}
+	if existingID > 0 {
+		if err := f.createFreeScoutThread(ctx, existingID, message); err != nil {
+			return 0, err
+		}
+		return existingID, nil
+	}
+
 	payload := freeScoutConversationPayload{
 		Type:      "email",
 		MailboxID: f.opts.MailboxID,
@@ -136,6 +165,86 @@ func (f *FreeScout) CreateFreeScoutConversation(ctx context.Context, subject, me
 		return 0, nil
 	}
 	return id, nil
+}
+
+func (f *FreeScout) findExistingConversationID(ctx context.Context, subject string) (int64, error) {
+	params := url.Values{
+		"embed":         []string{"threads"},
+		"mailboxId":     []string{strconv.FormatInt(f.opts.MailboxID, 10)},
+		"status":        []string{"active"},
+		"state":         []string{"published"},
+		"type":          []string{"email"},
+		"customerEmail": []string{f.opts.CustomerEmail},
+		"subject":       []string{subject},
+		"sortField":     []string{"updatedAt"},
+		"sortOrder":     []string{"asc"},
+		"page":          []string{"1"},
+		"pageSize":      []string{"1"},
+	}
+	endpoint := fmt.Sprintf("%s/api/conversations?%s", f.opts.URL, params.Encode())
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return 0, err
+	}
+	req.Header.Set("X-FreeScout-API-Key", f.opts.APIToken)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := f.client.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode/100 != 2 {
+		respBody, _ := io.ReadAll(resp.Body)
+		return 0, fmt.Errorf("freescout request failed: status %d: %s", resp.StatusCode, strings.TrimSpace(string(respBody)))
+	}
+
+	var payload freeScoutConversationsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		return 0, err
+	}
+	if len(payload.Embedded.Conversations) == 0 {
+		return 0, nil
+	}
+	return payload.Embedded.Conversations[0].ID, nil
+}
+
+func (f *FreeScout) createFreeScoutThread(ctx context.Context, conversationID int64, message string) error {
+	payload := freeScoutThreadPayload{
+		Type: "customer",
+		Text: message,
+		Customer: &freeScoutCustomer{
+			Email: f.opts.CustomerEmail,
+		},
+		Imported: false,
+		Status:   "active",
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	endpoint := fmt.Sprintf("%s/api/conversations/%d/threads", f.opts.URL, conversationID)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewBuffer(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("X-FreeScout-API-Key", f.opts.APIToken)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := f.client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode/100 != 2 {
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("freescout request failed: status %d: %s", resp.StatusCode, strings.TrimSpace(string(respBody)))
+	}
+
+	return nil
 }
 
 // FreeScoutConfigMatches returns true if the FreeScout client has been configured using those same options.
