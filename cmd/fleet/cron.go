@@ -44,6 +44,7 @@ import (
 	"github.com/fleetdm/fleet/v4/server/vulnerabilities/utils"
 	"github.com/fleetdm/fleet/v4/server/webhooks"
 	"github.com/fleetdm/fleet/v4/server/worker"
+	kitlog "github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 )
 
