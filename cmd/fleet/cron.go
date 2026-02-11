@@ -48,6 +48,7 @@ import (
 	"github.com/fleetdm/fleet/v4/server/vulnerabilities/winoffice"
 	"github.com/fleetdm/fleet/v4/server/webhooks"
 	"github.com/fleetdm/fleet/v4/server/worker"
+	kitlog "github.com/go-kit/log"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
