@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sort"
 	"sync"
 	"text/template"
@@ -14,8 +15,6 @@ import (
 	"github.com/fleetdm/fleet/v4/server/contexts/ctxerr"
 	"github.com/fleetdm/fleet/v4/server/fleet"
 	"github.com/fleetdm/fleet/v4/server/service/externalsvc"
-	kitlog "github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 )
 
 // freescoutName is the name of the job as registered in the worker.
@@ -115,7 +114,7 @@ type FreeScoutClient interface {
 type FreeScout struct {
 	FleetURL      string
 	Datastore     fleet.Datastore
-	Log           kitlog.Logger
+	Log           *slog.Logger
 	NewClientFunc func(*externalsvc.FreeScoutOptions) (FreeScoutClient, error)
 
 	// mu protects concurrent access to clientsCache, so that the job processor
@@ -296,8 +295,9 @@ func (f *FreeScout) runVuln(ctx context.Context, cli FreeScoutClient, args freeS
 	if err != nil {
 		return err
 	}
-	level.Debug(f.Log).Log(
-		"msg", "created freescout conversation for cve",
+	f.Log.DebugContext(
+		ctx,
+		"created freescout conversation for cve",
 		"cve", vargs.CVE,
 		"conversation_id", conversationID,
 	)
@@ -312,8 +312,7 @@ func (f *FreeScout) runFailingPolicy(ctx context.Context, cli FreeScoutClient, a
 		return err
 	}
 
-	attrs := []interface{}{
-		"msg", "created freescout conversation for failing policy",
+	attrs := []any{
 		"policy_id", args.FailingPolicy.PolicyID,
 		"policy_name", args.FailingPolicy.PolicyName,
 		"conversation_id", conversationID,
@@ -321,7 +320,7 @@ func (f *FreeScout) runFailingPolicy(ctx context.Context, cli FreeScoutClient, a
 	if args.FailingPolicy.TeamID != nil {
 		attrs = append(attrs, "team_id", *args.FailingPolicy.TeamID)
 	}
-	level.Debug(f.Log).Log(attrs...)
+	f.Log.DebugContext(ctx, "created freescout conversation for failing policy", attrs...)
 	return nil
 }
 
@@ -350,11 +349,11 @@ func (f *FreeScout) createTemplatedConversation(ctx context.Context, cli FreeSco
 func QueueFreeScoutVulnJobs(
 	ctx context.Context,
 	ds fleet.Datastore,
-	logger kitlog.Logger,
+	logger *slog.Logger,
 	recentVulns []fleet.SoftwareVulnerability,
 	cveMeta map[string]fleet.CVEMeta,
 ) error {
-	level.Info(logger).Log("enabled", "true", "recentVulns", len(recentVulns))
+	logger.InfoContext(ctx, "freescout integration enabled", "recent_vulns", len(recentVulns))
 
 	// for troubleshooting, log in debug level the CVEs that we will process
 	// (cannot be done in the loop below as we want to add the debug log
@@ -364,7 +363,7 @@ func QueueFreeScoutVulnJobs(
 		cves = append(cves, vuln.GetCVE())
 	}
 	sort.Strings(cves)
-	level.Debug(logger).Log("recent_cves", fmt.Sprintf("%v", cves))
+	logger.DebugContext(ctx, "recent CVEs to process", "recent_cves", fmt.Sprintf("%v", cves))
 
 	cveGrouped := make(map[string][]uint)
 	for _, v := range recentVulns {
@@ -383,18 +382,17 @@ func QueueFreeScoutVulnJobs(
 		if err != nil {
 			return ctxerr.Wrap(ctx, err, "queueing job")
 		}
-		level.Debug(logger).Log("job_id", job.ID)
+		logger.DebugContext(ctx, "queued freescout vuln job", "job_id", job.ID)
 	}
 	return nil
 }
 
 // QueueFreeScoutFailingPolicyJob queues a FreeScout job for a failing policy to
 // process asynchronously via the worker.
-func QueueFreeScoutFailingPolicyJob(ctx context.Context, ds fleet.Datastore, logger kitlog.Logger,
+func QueueFreeScoutFailingPolicyJob(ctx context.Context, ds fleet.Datastore, logger *slog.Logger,
 	policy *fleet.Policy, hosts []fleet.PolicySetHost,
 ) error {
-	attrs := []interface{}{
-		"enabled", "true",
+	attrs := []any{
 		"failing_policy", policy.ID,
 		"hosts_count", len(hosts),
 	}
@@ -402,12 +400,11 @@ func QueueFreeScoutFailingPolicyJob(ctx context.Context, ds fleet.Datastore, log
 		attrs = append(attrs, "team_id", *policy.TeamID)
 	}
 	if len(hosts) == 0 {
-		attrs = append(attrs, "msg", "skipping, no host")
-		level.Debug(logger).Log(attrs...)
+		logger.DebugContext(ctx, "skipping, no host", attrs...)
 		return nil
 	}
 
-	level.Info(logger).Log(attrs...)
+	logger.InfoContext(ctx, "queueing freescout failing policy job", attrs...)
 
 	args := &failingPolicyArgs{
 		PolicyID:       policy.ID,
@@ -420,6 +417,6 @@ func QueueFreeScoutFailingPolicyJob(ctx context.Context, ds fleet.Datastore, log
 	if err != nil {
 		return ctxerr.Wrap(ctx, err, "queueing job")
 	}
-	level.Debug(logger).Log("job_id", job.ID)
+	logger.DebugContext(ctx, "queued freescout failing policy job", "job_id", job.ID)
 	return nil
 }
