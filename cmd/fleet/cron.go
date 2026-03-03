@@ -48,7 +48,6 @@ import (
 	"github.com/fleetdm/fleet/v4/server/vulnerabilities/winoffice"
 	"github.com/fleetdm/fleet/v4/server/webhooks"
 	"github.com/fleetdm/fleet/v4/server/worker"
-	kitlog "github.com/go-kit/log"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -356,7 +355,7 @@ func scanVulnerabilities(
 			if err := worker.QueueFreeScoutVulnJobs(
 				automationCtx,
 				ds,
-				kitlog.With(logger, "freescout", "vulnerabilities"),
+				logger.With("freescout", "vulnerabilities"),
 				recentV,
 				matchingMeta,
 			); err != nil {
