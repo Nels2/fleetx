@@ -45,6 +45,10 @@ import (
 	"github.com/fleetdm/fleet/v4/server/webhooks"
 	"github.com/fleetdm/fleet/v4/server/worker"
 	kitlog "github.com/go-kit/log"
+<<<<<<< HEAD
+=======
+	"github.com/go-kit/log/level"
+>>>>>>> 6987a793ae9edaa81a6ce121802f0f68cc4e52c3
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -339,6 +343,7 @@ func scanVulnerabilities(
 				errHandler(ctx, logger, "queueing vulnerabilities to FreeScout", err)
 			}
 
+<<<<<<< HEAD
 		case "freescout":
 			// queue job to create freescout conversation
 			if err := worker.QueueFreeScoutVulnJobs(
@@ -351,6 +356,8 @@ func scanVulnerabilities(
 				errHandler(ctx, logger, "queueing vulnerabilities to FreeScout", err)
 			}
 
+=======
+>>>>>>> 6987a793ae9edaa81a6ce121802f0f68cc4e52c3
 		default:
 			err = ctxerr.New(automationCtx, "no vuln automations enabled")
 			errHandler(automationCtx, logger, "attempting to process vuln automations", err)
