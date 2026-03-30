@@ -603,6 +603,11 @@ func (svc *Service) ModifyAppConfig(ctx context.Context, p []byte, applyOpts fle
 		return nil, ctxerr.Wrap(ctx, err, "modify AppConfig")
 	}
 
+	storedFreeScoutByMailboxID, err := fleet.IndexFreeScoutIntegrations(appConfig.Integrations.Freescout)
+	if err != nil {
+		return nil, ctxerr.Wrap(ctx, err, "modify AppConfig")
+	}
+
 	// Rewrite deprecated JSON field names (e.g. team_id → fleet_id) before
 	// unmarshaling into AppConfig, since the request body was captured as
 	// json.RawMessage and wasn't processed by the request decoder's rewriter.
@@ -1182,14 +1187,16 @@ func (svc *Service) ModifyAppConfig(ctx context.Context, p []byte, applyOpts fle
 	}
 
 	// NOTE: the frontend will always send all integrations back when making
-	// changes, so as soon as Jira or Zendesk has something set, it's fair to
-	// assume that integrations are being modified and we have the full set of
-	// those integrations. When deleting, it does send empty arrays (not nulls),
-	// so this is fine - e.g. when deleting the last integration it sends:
+	// changes, so as soon as Jira, Zendesk, or FreeScout has something set,
+	// it's fair to assume that integrations are being modified and we have the
+	// full set of those integrations. When deleting, it does send empty arrays
+	// (not nulls), so this is fine - e.g. when deleting the last integration it sends:
 	//
 	//   {"integrations":{"zendesk":[],"jira":[]}}
 	//
-	if newAppConfig.Integrations.Jira != nil || newAppConfig.Integrations.Zendesk != nil {
+	if newAppConfig.Integrations.Jira != nil ||
+		newAppConfig.Integrations.Zendesk != nil ||
+		newAppConfig.Integrations.Freescout != nil {
 		delJira, err := fleet.ValidateJiraIntegrations(ctx, storedJiraByProjectKey, newAppConfig.Integrations.Jira)
 		if err != nil {
 			if errors.As(err, &fleet.IntegrationTestError{}) {
@@ -1212,9 +1219,24 @@ func (svc *Service) ModifyAppConfig(ctx context.Context, p []byte, applyOpts fle
 		}
 		appConfig.Integrations.Zendesk = newAppConfig.Integrations.Zendesk
 
+		delFreeScout, err := fleet.ValidateFreeScoutIntegrations(ctx, storedFreeScoutByMailboxID, newAppConfig.Integrations.Freescout)
+		if err != nil {
+			if errors.As(err, &fleet.IntegrationTestError{}) {
+				return nil, ctxerr.Wrap(ctx, &fleet.BadRequestError{
+					Message: err.Error(),
+				})
+			}
+			return nil, ctxerr.Wrap(ctx, fleet.NewInvalidArgumentError("FreeScout integration", err.Error()))
+		}
+		appConfig.Integrations.Freescout = newAppConfig.Integrations.Freescout
+
 		// if any integration was deleted, remove it from any team that uses it
-		if len(delJira)+len(delZendesk) > 0 {
-			if err := svc.ds.DeleteIntegrationsFromTeams(ctx, fleet.Integrations{Jira: delJira, Zendesk: delZendesk}); err != nil {
+		if len(delJira)+len(delZendesk)+len(delFreeScout) > 0 {
+			if err := svc.ds.DeleteIntegrationsFromTeams(ctx, fleet.Integrations{
+				Jira:      delJira,
+				Zendesk:   delZendesk,
+				Freescout: delFreeScout,
+			}); err != nil {
 				return nil, ctxerr.Wrap(ctx, err, "delete integrations from teams")
 			}
 		}
