@@ -5,6 +5,7 @@ import { IConfig } from "interfaces/config";
 import {
   IJiraIntegration,
   IZendeskIntegration,
+  IFreeScoutIntegration,
   IIntegration,
   IIntegrationTableData,
   IGlobalIntegrations,
@@ -59,6 +60,9 @@ const TicketDestinations = (): JSX.Element => {
   const [zendeskIntegrations, setZendeskIntegrations] = useState<
     IZendeskIntegration[]
   >();
+  const [freescoutIntegrations, setFreeScoutIntegrations] = useState<
+    IFreeScoutIntegration[]
+  >();
   const [testingConnection, setTestingConnection] = useState(false);
 
   const {
@@ -77,6 +81,7 @@ const TicketDestinations = (): JSX.Element => {
         if (data) {
           setJiraIntegrations(data.jira);
           setZendeskIntegrations(data.zendesk);
+          setFreeScoutIntegrations(data.freescout);
         }
       },
     }
@@ -112,13 +117,29 @@ const TicketDestinations = (): JSX.Element => {
           return {
             jira: integrationSubmitData,
             zendesk: zendeskIntegrations,
+            freescout: freescoutIntegrations,
+          };
+        }
+        if (integrationDestination === "zendesk") {
+          return {
+            zendesk: integrationSubmitData,
+            jira: jiraIntegrations,
+            freescout: freescoutIntegrations,
           };
         }
         return {
-          zendesk: integrationSubmitData,
+          freescout: integrationSubmitData,
           jira: jiraIntegrations,
+          zendesk: zendeskIntegrations,
         };
       };
+
+      const lastIntegration =
+        integrationSubmitData[integrationSubmitData.length - 1];
+      const integrationKey =
+        lastIntegration.project_key ||
+        lastIntegration.group_id ||
+        lastIntegration.mailbox_id;
 
       setTestingConnection(true);
       configAPI
@@ -128,11 +149,7 @@ const TicketDestinations = (): JSX.Element => {
             <>
               Successfully added{" "}
               <b>
-                {integrationSubmitData[integrationSubmitData.length - 1].url} -{" "}
-                {integrationSubmitData[integrationSubmitData.length - 1]
-                  .project_key ||
-                  integrationSubmitData[integrationSubmitData.length - 1]
-                    .group_id}
+                {lastIntegration.url} - {integrationKey}
               </b>
             </>
           );
@@ -142,23 +159,13 @@ const TicketDestinations = (): JSX.Element => {
         .catch((addError: { data: IApiError }) => {
           if (addError.data?.message.includes("Validation Failed")) {
             if (
-              addError.data?.errors[0].reason.includes(
-                "duplicate Jira integration"
-              )
+              addError.data?.errors?.[0]?.reason?.includes("duplicate")
             ) {
               notify.error(
                 <>
                   Could not add{" "}
                   <b>
-                    {
-                      integrationSubmitData[integrationSubmitData.length - 1]
-                        .url
-                    }{" "}
-                    -{" "}
-                    {integrationSubmitData[integrationSubmitData.length - 1]
-                      .project_key ||
-                      integrationSubmitData[integrationSubmitData.length - 1]
-                        .group_id}
+                    {lastIntegration.url} - {integrationKey}
                   </b>
                   . This integration already exists
                 </>,
@@ -175,9 +182,7 @@ const TicketDestinations = (): JSX.Element => {
             notify.error(
               <>
                 Could not add{" "}
-                <b>
-                  {integrationSubmitData[integrationSubmitData.length - 1].url}
-                </b>
+                <b>{lastIntegration.url}</b>
                 . Please try again.
               </>,
               { response: addError }
@@ -200,14 +205,26 @@ const TicketDestinations = (): JSX.Element => {
             integrations: {
               jira: integrations?.jira,
               zendesk: zendeskIntegrations,
+              freescout: freescoutIntegrations,
             },
           });
         }
-        integrations?.zendesk.splice(integrationEditing.originalIndex, 1);
+        if (integrationEditing.type === "zendesk") {
+          integrations?.zendesk.splice(integrationEditing.originalIndex, 1);
+          return configAPI.update({
+            integrations: {
+              zendesk: integrations?.zendesk,
+              jira: jiraIntegrations,
+              freescout: freescoutIntegrations,
+            },
+          });
+        }
+        integrations?.freescout.splice(integrationEditing.originalIndex, 1);
         return configAPI.update({
           integrations: {
-            zendesk: integrations?.zendesk,
+            freescout: integrations?.freescout,
             jira: jiraIntegrations,
+            zendesk: zendeskIntegrations,
           },
         });
       };
@@ -265,8 +282,13 @@ const TicketDestinations = (): JSX.Element => {
   ]);
 
   const tableData = useMemo(
-    () => combineDataSets(jiraIntegrations || [], zendeskIntegrations || []),
-    [jiraIntegrations, zendeskIntegrations]
+    () =>
+      combineDataSets(
+        jiraIntegrations || [],
+        zendeskIntegrations || [],
+        freescoutIntegrations || []
+      ),
+    [jiraIntegrations, zendeskIntegrations, freescoutIntegrations]
   );
 
   const renderTable = () => {
@@ -330,7 +352,7 @@ const TicketDestinations = (): JSX.Element => {
         <AddTicketDestinationModal
           onCancel={toggleAddTicketDestinationModal}
           onSubmit={onAddSubmit}
-          integrations={integrations || { jira: [], zendesk: [] }}
+          integrations={integrations || { jira: [], zendesk: [], freescout: [] }}
           testingConnection={testingConnection}
         />
       )}
@@ -342,6 +364,7 @@ const TicketDestinations = (): JSX.Element => {
           projectKey={
             integrationEditing?.projectKey ||
             integrationEditing?.groupId?.toString() ||
+            integrationEditing?.mailboxId?.toString() ||
             ""
           }
           isUpdatingIntegration={isUpdatingIntegration}

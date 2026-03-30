@@ -28,12 +28,20 @@ const ExampleTicket = ({
         alt="Jira example policy automation ticket"
         className={`${baseClass}__screenshot`}
       />
-    ) : (
+    ) : integrationType === "zendesk" ? (
       <img
         src={isPremiumTier ? ZendeskPreviewPremium : ZendeskPreview}
         alt="Zendesk example policy automation ticket"
         className={`${baseClass}__screenshot`}
       />
+    ) : (
+      <div className={`${baseClass}__placeholder`}>
+        <h3>FreeScout ticket</h3>
+        <p>
+          Fleet will send a conversation with the policy details to your
+          FreeScout mailbox.
+        </p>
+      </div>
     );
 
   return (
