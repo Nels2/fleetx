@@ -187,6 +187,17 @@ func scanVulnerabilities(
 			break
 		}
 	}
+	// check for FreeScout integrations
+	for _, f := range appConfig.Integrations.Freescout {
+		if f.EnableSoftwareVulnerabilities {
+			if vulnAutomationEnabled != "" {
+				err := ctxerr.New(ctx, "freescout check")
+				errHandler(ctx, logger, "more than one automation enabled", err)
+			}
+			vulnAutomationEnabled = "freescout"
+			break
+		}
+	}
 
 	logger.DebugContext(ctx, "", "vulnAutomationEnabled", vulnAutomationEnabled)
 
@@ -337,6 +348,18 @@ func scanVulnerabilities(
 				matchingMeta,
 			); err != nil {
 				errHandler(automationCtx, logger, "queueing vulnerabilities to Zendesk", err)
+			}
+
+		case "freescout":
+			// queue job to create freescout conversation
+			if err := worker.QueueFreeScoutVulnJobs(
+				ctx,
+				ds,
+				kitlog.With(logger, "freescout", "vulnerabilities"),
+				recentV,
+				matchingMeta,
+			); err != nil {
+				errHandler(ctx, logger, "queueing vulnerabilities to FreeScout", err)
 			}
 
 		default:
@@ -1007,6 +1030,18 @@ func triggerFailingPoliciesAutomation(
 			if err := failingPoliciesSet.RemoveHosts(policy.ID, hosts); err != nil {
 				return ctxerr.Wrapf(ctx, err, "removing %d hosts from failing policies set %d", len(hosts), policy.ID)
 			}
+
+		case policies.FailingPolicyFreeScout:
+			hosts, err := failingPoliciesSet.ListHosts(policy.ID)
+			if err != nil {
+				return ctxerr.Wrapf(ctx, err, "listing hosts for failing policies set %d", policy.ID)
+			}
+			if err := worker.QueueFreeScoutFailingPolicyJob(ctx, ds, logger, policy, hosts); err != nil {
+				return err
+			}
+			if err := failingPoliciesSet.RemoveHosts(policy.ID, hosts); err != nil {
+				return ctxerr.Wrapf(ctx, err, "removing %d hosts from failing policies set %d", len(hosts), policy.ID)
+			}
 		}
 		return nil
 	})
@@ -1060,6 +1095,11 @@ func newWorkerIntegrationsSchedule(
 		NewClientFunc:  newZendeskClient,
 		NewActivitySvc: newActivitySvc,
 	}
+	freescout := &worker.FreeScout{
+		Datastore:     ds,
+		Log:           logger,
+		NewClientFunc: newFreeScoutClient,
+	}
 	var (
 		depSvc *apple_mdm.DEPService
 		depCli *godep.Client
@@ -1101,7 +1141,7 @@ func newWorkerIntegrationsSchedule(
 		ChartService: chartSvc,
 		Log:          logger,
 	}
-	w.Register(jira, zendesk, macosSetupAsst, dbMigrate, vppVerify, softwareWorker, chartScrubGlobal, chartScrubFleet)
+	w.Register(jira, zendesk, freescout, macosSetupAsst, dbMigrate, vppVerify, softwareWorker, chartScrubGlobal, chartScrubFleet)
 
 	// Read app config a first time before starting, to clear up any failer client
 	// configuration if we're not on a fleet-owned server. Technically, the ServerURL
@@ -1117,6 +1157,7 @@ func newWorkerIntegrationsSchedule(
 	if !strings.Contains(appConfig.ServerSettings.ServerURL, "fleetdm") {
 		os.Unsetenv("FLEET_JIRA_CLIENT_FORCED_FAILURES")
 		os.Unsetenv("FLEET_ZENDESK_CLIENT_FORCED_FAILURES")
+		os.Unsetenv("FLEET_FREESCOUT_CLIENT_FORCED_FAILURES")
 	}
 
 	s := schedule.New(
@@ -1132,6 +1173,7 @@ func newWorkerIntegrationsSchedule(
 
 			jira.FleetURL = appConfig.ServerSettings.ServerURL
 			zendesk.FleetURL = appConfig.ServerSettings.ServerURL
+			freescout.FleetURL = appConfig.ServerSettings.ServerURL
 
 			workCtx, cancel := context.WithTimeout(ctx, maxRunTime)
 			defer cancel()
@@ -1178,6 +1220,23 @@ func newZendeskClient(opts *externalsvc.ZendeskOptions) (worker.ZendeskClient, e
 	failerClient := newFailerClient(os.Getenv("FLEET_ZENDESK_CLIENT_FORCED_FAILURES"))
 	if failerClient != nil {
 		failerClient.ZendeskClient = client
+		return failerClient, nil
+	}
+	return client, nil
+}
+
+func newFreeScoutClient(opts *externalsvc.FreeScoutOptions) (worker.FreeScoutClient, error) {
+	client, err := externalsvc.NewFreeScoutClient(opts)
+	if err != nil {
+		return nil, err
+	}
+
+	// create client wrappers to introduce forced failures if configured
+	// to do so via the environment variable.
+	// format is "<modulo number>;<cve1>,<cve2>,<cve3>,..."
+	failerClient := newFailerClient(os.Getenv("FLEET_FREESCOUT_CLIENT_FORCED_FAILURES"))
+	if failerClient != nil {
+		failerClient.FreeScoutClient = client
 		return failerClient, nil
 	}
 	return client, nil
