@@ -7,4 +7,21 @@
   &__screenshot {
     max-width: 400px;
   }
+
+  &__placeholder {
+    max-width: 400px;
+    padding: $pad-large;
+    border-radius: 8px;
+    background-color: $ui-off-white;
+    border: 1px solid $ui-fleet-blue-15;
+
+    h3 {
+      margin-top: 0;
+      margin-bottom: $pad-small;
+    }
+
+    p {
+      margin: 0;
+    }
+  }
 }

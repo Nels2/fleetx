@@ -313,6 +313,12 @@ func (svc Service) CountSoftware(ctx context.Context, opt fleet.SoftwareListOpti
 		return 0, err
 	}
 
+	var err error
+	opt.TypeFilter, err = fleet.ParseSoftwareTypeFilter(opt.Source, opt.ExtensionFor)
+	if err != nil {
+		return 0, err
+	}
+
 	if softwareListNeedsCVEMeta(opt) {
 		opt.IncludeCVEScores = true
 	}

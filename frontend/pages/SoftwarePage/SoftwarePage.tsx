@@ -16,7 +16,7 @@ import TooltipWrapper from "components/TooltipWrapper";
 import { AppContext } from "context/app";
 import useTeamIdParam from "hooks/useTeamIdParam";
 import { IConfig } from "interfaces/config";
-import { IJiraIntegration, IZendeskIntegration } from "interfaces/integration";
+import { IJiraIntegration, IZendeskIntegration, IFreeScoutIntegration } from "interfaces/integration";
 import { SelectedPlatform } from "interfaces/platform";
 import { getSoftwareTypes } from "interfaces/software";
 import { APP_CONTEXT_ALL_TEAMS_ID, ITeamConfig } from "interfaces/team";
@@ -130,6 +130,7 @@ interface ISoftwareAutomations {
   integrations: {
     jira: IJiraIntegration[];
     zendesk: IZendeskIntegration[];
+    freescout: IFreeScoutIntegration[];
   };
 }
 
