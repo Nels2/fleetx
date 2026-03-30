@@ -2651,6 +2651,11 @@ func globalPolicyAutomationsEnabled(webhookSettings fleet.WebhookSettings, integ
 			return true
 		}
 	}
+	for _, f := range integrations.Freescout {
+		if f.EnableFailingPolicies {
+			return true
+		}
+	}
 	return false
 }
 
@@ -2665,6 +2670,11 @@ func teamPolicyAutomationsEnabled(webhookSettings fleet.TeamWebhookSettings, int
 	}
 	for _, z := range integrations.Zendesk {
 		if z.EnableFailingPolicies {
+			return true
+		}
+	}
+	for _, f := range integrations.Freescout {
+		if f.EnableFailingPolicies {
 			return true
 		}
 	}

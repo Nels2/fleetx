@@ -120,6 +120,16 @@ func (svc *Service) ListSoftware(ctx context.Context, opt fleet.SoftwareListOpti
 		return nil, nil, err
 	}
 
+	var err error
+	opt.TypeFilter, err = fleet.ParseSoftwareTypeFilter(opt.Source, opt.ExtensionFor)
+	if err != nil {
+		return nil, nil, err
+	}
+	lic, err := svc.License(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	if softwareListNeedsCVEMeta(opt) {
 		opt.IncludeCVEScores = true
 	}
@@ -280,6 +290,12 @@ func (svc Service) CountSoftware(ctx context.Context, opt fleet.SoftwareListOpti
 		return 0, err
 	}
 
+	opt.TypeFilter, err = fleet.ParseSoftwareTypeFilter(opt.Source, opt.ExtensionFor)
+	if err != nil {
+		return 0, err
+	}
+
+	var err error
 	opt.TypeFilter, err = fleet.ParseSoftwareTypeFilter(opt.Source, opt.ExtensionFor)
 	if err != nil {
 		return 0, err
