@@ -31,7 +31,8 @@ export const getTicketOrWebhookInfo = (
   const integrations = automationsConfig.integrations;
   const ticketEnabled =
     !!integrations?.jira?.some((j) => j.enable_failing_policies) ||
-    !!integrations?.zendesk?.some((z) => z.enable_failing_policies);
+    !!integrations?.zendesk?.some((z) => z.enable_failing_policies) ||
+    !!integrations?.freescout?.some((f) => f.enable_failing_policies);
 
   let state: TicketOrWebhookState = "disabled";
   if (webhookEnabled) state = "webhook";

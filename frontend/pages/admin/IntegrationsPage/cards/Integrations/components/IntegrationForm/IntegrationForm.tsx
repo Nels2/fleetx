@@ -33,6 +33,9 @@ interface IIntegrationFormProps {
   integrationEditingApiToken?: string;
   integrationEditingProjectKey?: string;
   integrationEditingGroupId?: number;
+  integrationEditingMailboxId?: number;
+  integrationEditingCustomerEmail?: string;
+  integrationEditingAssignTo?: number;
   integrationEnableSoftwareVulnerabilities?: boolean;
   integrationEditingType?: IIntegrationType;
   destination?: string;
@@ -51,13 +54,20 @@ const IntegrationForm = ({
   integrationEditingApiToken,
   integrationEditingProjectKey,
   integrationEditingGroupId,
+  integrationEditingMailboxId,
+  integrationEditingCustomerEmail,
+  integrationEditingAssignTo,
   integrationEnableSoftwareVulnerabilities,
   integrationEditingType,
   destination,
   testingConnection,
   gitOpsModeEnabled,
 }: IIntegrationFormProps): JSX.Element => {
-  const { jira: jiraIntegrations, zendesk: zendeskIntegrations } = integrations;
+  const {
+    jira: jiraIntegrations,
+    zendesk: zendeskIntegrations,
+    freescout: freescoutIntegrations,
+  } = integrations;
   const [formData, setFormData] = useState<IIntegrationFormData>({
     url: integrationEditingUrl || "",
     username: integrationEditingUsername || "",
@@ -65,6 +75,9 @@ const IntegrationForm = ({
     apiToken: integrationEditingApiToken || "",
     projectKey: integrationEditingProjectKey || "",
     groupId: integrationEditingGroupId || 0,
+    mailboxId: integrationEditingMailboxId || 0,
+    customerEmail: integrationEditingCustomerEmail || "",
+    assignTo: integrationEditingAssignTo || 0,
     enableSoftwareVulnerabilities:
       integrationEnableSoftwareVulnerabilities || false,
   });
@@ -77,7 +90,17 @@ const IntegrationForm = ({
     setIntegrationDestination(destination || integrationEditingType || "jira");
   }, [destination, integrationEditingType]);
 
-  const { url, username, email, apiToken, projectKey, groupId } = formData;
+  const {
+    url,
+    username,
+    email,
+    apiToken,
+    projectKey,
+    groupId,
+    mailboxId,
+    customerEmail,
+    assignTo,
+  } = formData;
 
   const onInputChange = ({ name, value }: IInputFieldParseTarget) => {
     setFormData({ ...formData, [name]: value });
@@ -97,6 +120,7 @@ const IntegrationForm = ({
   const createSubmitData = (): IIntegration[] => {
     let jiraIntegrationSubmitData = jiraIntegrations || [];
     let zendeskIntegrationSubmitData = zendeskIntegrations || [];
+    let freescoutIntegrationSubmitData = freescoutIntegrations || [];
 
     // Editing through UI is temporarily deprecated in 4.14
     if (integrationDestination === "jira") {
@@ -126,6 +150,40 @@ const IntegrationForm = ({
         ];
       }
       return jiraIntegrationSubmitData;
+    }
+    if (integrationDestination === "freescout") {
+      if (
+        integrationEditing &&
+        (integrationEditing.originalIndex ||
+          integrationEditing.originalIndex === 0) &&
+        integrationEditing.customerEmail
+      ) {
+        // Edit existing freescout integration using array replacement
+        freescoutIntegrationSubmitData.splice(
+          integrationEditing.originalIndex,
+          1,
+          {
+            url,
+            api_token: apiToken,
+            mailbox_id: parseInt(mailboxId as any, 10) || 0,
+            customer_email: customerEmail || "",
+            assign_to: parseInt(assignTo as any, 10) || 0,
+          }
+        );
+      } else {
+        // Create new freescout integration at end of array
+        freescoutIntegrationSubmitData = [
+          ...freescoutIntegrationSubmitData,
+          {
+            url,
+            api_token: apiToken,
+            mailbox_id: parseInt(mailboxId as any, 10) || 0,
+            customer_email: customerEmail || "",
+            assign_to: parseInt(assignTo as any, 10) || 0,
+          },
+        ];
+      }
+      return freescoutIntegrationSubmitData;
     }
     if (
       integrationEditing &&
@@ -183,7 +241,9 @@ const IntegrationForm = ({
             placeholder={
               integrationDestination === "jira"
                 ? "https://example.atlassian.net"
-                : "https://example.zendesk.com"
+                : integrationDestination === "zendesk"
+                ? "https://example.zendesk.com"
+                : "https://support.example.com"
             }
             parseTarget
             value={url}
@@ -201,7 +261,7 @@ const IntegrationForm = ({
               value={username}
               disabled={gitOpsModeEnabled}
             />
-          ) : (
+          ) : integrationDestination === "zendesk" ? (
             <InputField
               name="email"
               onChange={onInputChange}
@@ -209,6 +269,17 @@ const IntegrationForm = ({
               placeholder="name@example.com"
               parseTarget
               value={email}
+              disabled={gitOpsModeEnabled}
+              type="email"
+            />
+          ) : (
+            <InputField
+              name="customerEmail"
+              onChange={onInputChange}
+              label="Customer email"
+              placeholder="support@example.com"
+              parseTarget
+              value={customerEmail}
               disabled={gitOpsModeEnabled}
               type="email"
             />
@@ -240,7 +311,7 @@ const IntegrationForm = ({
                 </>
               }
             />
-          ) : (
+          ) : integrationDestination === "zendesk" ? (
             <InputField
               name="groupId"
               onChange={onInputChange}
@@ -262,6 +333,36 @@ const IntegrationForm = ({
                 </>
               }
             />
+          ) : (
+            <>
+              <InputField
+                name="mailboxId"
+                onChange={onInputChange}
+                label="Mailbox ID"
+                placeholder="1"
+                type="number"
+                parseTarget
+                value={mailboxId === 0 ? null : mailboxId}
+                disabled={gitOpsModeEnabled}
+                tooltip={
+                  <>
+                    To find the FreeScout mailbox ID, open the mailbox in{" "}
+                    <br />
+                    FreeScout and copy the number from the URL.
+                  </>
+                }
+              />
+              <InputField
+                name="assignTo"
+                onChange={onInputChange}
+                label="Assign to (optional)"
+                placeholder="15"
+                type="number"
+                parseTarget
+                value={assignTo === 0 ? null : assignTo}
+                disabled={gitOpsModeEnabled}
+              />
+            </>
           )}
           <div className="modal-cta-wrap">
             <GitOpsModeTooltipWrapper
@@ -274,11 +375,17 @@ const IntegrationForm = ({
                       formData.username === "" ||
                       formData.apiToken === "" ||
                       formData.projectKey === ""
-                    : formData.url === "" ||
+                    : integrationDestination === "zendesk"
+                    ? formData.url === "" ||
                       formData.url.slice(0, 8) !== "https://" ||
                       formData.email === "" ||
                       formData.apiToken === "" ||
-                      formData.groupId === 0;
+                      formData.groupId === 0
+                    : formData.url === "" ||
+                      formData.url.slice(0, 8) !== "https://" ||
+                      formData.customerEmail === "" ||
+                      formData.apiToken === "" ||
+                      formData.mailboxId === 0;
                 return (
                   <TooltipWrapper
                     tipContent={
