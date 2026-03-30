@@ -30,6 +30,9 @@ interface IIntegrationFormProps {
   integrationEditingApiToken?: string;
   integrationEditingProjectKey?: string;
   integrationEditingGroupId?: number;
+  integrationEditingMailboxId?: number;
+  integrationEditingCustomerEmail?: string;
+  integrationEditingAssignTo?: number;
   integrationEnableSoftwareVulnerabilities?: boolean;
   integrationEditingType?: IIntegrationType;
   destination?: string;
@@ -60,6 +63,9 @@ const validateForm = (
     if (!data.projectKey) {
       errors.projectKey = "Enter a project key";
     }
+  } else if (destination === "freescout") {
+    if (!data.customerEmail || !isValidEmail(data.customerEmail)) errors.customerEmail = "Enter a valid email";
+    if (!data.mailboxId) errors.mailboxId = "Enter a mailbox ID";
   } else {
     if (!data.email) {
       errors.email = "Enter an email";
@@ -85,13 +91,16 @@ const IntegrationForm = ({
   integrationEditingApiToken,
   integrationEditingProjectKey,
   integrationEditingGroupId,
+  integrationEditingMailboxId,
+  integrationEditingCustomerEmail,
+  integrationEditingAssignTo,
   integrationEnableSoftwareVulnerabilities,
   integrationEditingType,
   destination,
   testingConnection,
   gitOpsModeEnabled,
 }: IIntegrationFormProps): JSX.Element => {
-  const { jira: jiraIntegrations, zendesk: zendeskIntegrations } = integrations;
+  const { jira: jiraIntegrations, zendesk: zendeskIntegrations, freescout: freescoutIntegrations } = integrations;
 
   const [integrationDestination, setIntegrationDestination] = useState(
     integrationEditingType || destination || "jira"
@@ -118,6 +127,9 @@ const IntegrationForm = ({
       apiToken: integrationEditingApiToken || "",
       projectKey: integrationEditingProjectKey || "",
       groupId: integrationEditingGroupId || 0,
+      mailboxId: integrationEditingMailboxId || 0,
+      customerEmail: integrationEditingCustomerEmail || "",
+      assignTo: integrationEditingAssignTo || 0,
       enableSoftwareVulnerabilities:
         integrationEnableSoftwareVulnerabilities || false,
     },
@@ -143,6 +155,7 @@ const IntegrationForm = ({
   const createSubmitData = (data: IIntegrationFormData): IIntegration[] => {
     let jiraIntegrationSubmitData = jiraIntegrations || [];
     let zendeskIntegrationSubmitData = zendeskIntegrations || [];
+    let freescoutIntegrationSubmitData = freescoutIntegrations || [];
 
     // Editing through UI is temporarily deprecated in 4.14
     if (integrationDestination === "jira") {
@@ -172,6 +185,40 @@ const IntegrationForm = ({
         ];
       }
       return jiraIntegrationSubmitData;
+    }
+    if (integrationDestination === "freescout") {
+      if (
+        integrationEditing &&
+        (integrationEditing.originalIndex ||
+          integrationEditing.originalIndex === 0) &&
+        integrationEditing.customerEmail
+      ) {
+        // Edit existing freescout integration using array replacement
+        freescoutIntegrationSubmitData.splice(
+          integrationEditing.originalIndex,
+          1,
+          {
+            url: data.url,
+            api_token: data.apiToken,
+            mailbox_id: parseInt(data.mailboxId as any, 10) || 0,
+            customer_email: data.customerEmail || "",
+            assign_to: parseInt(data.assignTo as any, 10) || 0,
+          }
+        );
+      } else {
+        // Create new freescout integration at end of array
+        freescoutIntegrationSubmitData = [
+          ...freescoutIntegrationSubmitData,
+          {
+            url: data.url,
+            api_token: data.apiToken,
+            mailbox_id: parseInt(data.mailboxId as any, 10) || 0,
+            customer_email: data.customerEmail || "",
+            assign_to: parseInt(data.assignTo as any, 10) || 0,
+          },
+        ];
+      }
+      return freescoutIntegrationSubmitData;
     }
     if (
       integrationEditing &&
@@ -238,6 +285,8 @@ const IntegrationForm = ({
           placeholder="name@example.com"
           disabled={gitOpsModeEnabled || isSubmitting}
         />
+      ) : integrationDestination === "freescout" ? (
+        <InputField {...getTextFieldProps("customerEmail")} label="Customer email" type="email" disabled={gitOpsModeEnabled || isSubmitting} />
       ) : (
         <InputField
           {...getTextFieldProps("email")}
@@ -267,6 +316,11 @@ const IntegrationForm = ({
             </>
           }
         />
+      ) : integrationDestination === "freescout" ? (
+        <>
+          <InputField name="mailboxId" label="Mailbox ID" type="number" value={formData.mailboxId || ""} onChange={(value: string) => setField("mailboxId", Number(value) || 0)} onFocus={() => clearFieldError("mailboxId")} onBlur={() => validateField("mailboxId")} error={getError("mailboxId")} disabled={gitOpsModeEnabled || isSubmitting} />
+          <InputField name="assignTo" label="Assign to (optional)" type="number" value={formData.assignTo || ""} onChange={(value: string) => setField("assignTo", Number(value) || 0)} disabled={gitOpsModeEnabled || isSubmitting} />
+        </>
       ) : (
         <InputField
           name="groupId"
