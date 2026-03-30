@@ -6,12 +6,14 @@ import ActionsDropdown from "components/ActionsDropdown";
 import {
   IJiraIntegration,
   IZendeskIntegration,
+  IFreeScoutIntegration,
   IIntegrationTableData as IIntegrationCompleteData,
 } from "interfaces/integration";
 import { IDropdownOption } from "interfaces/dropdownOption";
 
 import JiraIcon from "../../../../../../assets/images/icon-jira-24x24@2x.png";
 import ZendeskIcon from "../../../../../../assets/images/icon-zendesk-32x24@2x.png";
+import FreeScoutIcon from "../../../../../../assets/images/icon-freescout-24x24.svg";
 
 interface IHeaderProps {
   column: {
@@ -62,6 +64,16 @@ const generateTableHeaders = (
     integration: IIntegrationTableData
   ) => void
 ): IDataColumn[] => {
+  const iconByType: Record<string, string> = {
+    jira: JiraIcon,
+    zendesk: ZendeskIcon,
+    freescout: FreeScoutIcon,
+  };
+  const classByType: Record<string, string> = {
+    jira: "jira-icon",
+    zendesk: "zendesk-icon",
+    freescout: "freescout-icon",
+  };
   return [
     {
       title: "",
@@ -73,11 +85,9 @@ const generateTableHeaders = (
         return (
           <div className="logo-cell">
             <img
-              src={cellProps.cell.value === "jira" ? JiraIcon : ZendeskIcon}
+              src={iconByType[cellProps.cell.value] || ZendeskIcon}
               alt="integration-icon"
-              className={
-                cellProps.cell.value === "jira" ? "jira-icon" : "zendesk-icon"
-              }
+              className={classByType[cellProps.cell.value] || "zendesk-icon"}
             />
           </div>
         );
@@ -161,13 +171,35 @@ const enhanceZendeskData = (
   });
 };
 
+const enhanceFreeScoutData = (
+  freescoutIntegrations: IFreeScoutIntegration[]
+): IIntegrationTableData[] => {
+  return freescoutIntegrations.map((integration, index) => {
+    return {
+      url: integration.url,
+      apiToken: integration.api_token,
+      mailboxId: integration.mailbox_id,
+      customerEmail: integration.customer_email,
+      assignTo: integration.assign_to,
+      enableSoftwareVulnerabilities:
+        integration.enable_software_vulnerabilities,
+      name: `${integration.url} - ${integration.mailbox_id}`,
+      actions: generateActionDropdownOptions(),
+      originalIndex: index,
+      type: "freescout",
+    };
+  });
+};
+
 const combineDataSets = (
   jiraIntegrations: IJiraIntegration[],
-  zendeskIntegrations: IZendeskIntegration[]
+  zendeskIntegrations: IZendeskIntegration[],
+  freescoutIntegrations: IFreeScoutIntegration[]
 ): IIntegrationTableData[] => {
   const combine = [
     ...enhanceJiraData(jiraIntegrations),
     ...enhanceZendeskData(zendeskIntegrations),
+    ...enhanceFreeScoutData(freescoutIntegrations),
   ];
   return combine.map((integration, index) => {
     return { ...integration, tableIndex: index };

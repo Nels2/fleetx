@@ -792,6 +792,7 @@ const ManagePolicyPage = ({
               // IGlobalIntegrations definition.
               zendesk: teamConfig?.integrations.zendesk || [],
               jira: teamConfig?.integrations.jira || [],
+              freescout: teamConfig?.integrations.freescout || [],
             },
           },
           teamIdForApi
@@ -863,6 +864,7 @@ const ManagePolicyPage = ({
             // IGlobalIntegrations definition.
             zendesk: teamConfig?.integrations.zendesk || [],
             jira: teamConfig?.integrations.jira || [],
+            freescout: teamConfig?.integrations.freescout || [],
             conditional_access_enabled: enableConditionalAccess,
           },
         };
@@ -1035,10 +1037,11 @@ const ManagePolicyPage = ({
 
     let isIntegrationEnabled = false;
     if (integrations) {
-      const { jira, zendesk } = integrations;
+      const { jira, zendesk, freescout } = integrations;
       isIntegrationEnabled =
         !!jira?.find((j) => j.enable_failing_policies) ||
-        !!zendesk?.find((z) => z.enable_failing_policies);
+        !!zendesk?.find((z) => z.enable_failing_policies) ||
+        !!freescout?.find((f) => f.enable_failing_policies);
     }
 
     if (isIntegrationEnabled || webhook?.enable_failing_policies_webhook) {
