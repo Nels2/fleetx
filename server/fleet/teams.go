@@ -284,8 +284,9 @@ type DefaultTeamWebhookSettings struct {
 
 // DefaultTeamIntegrations contains only the integrations supported for team ID 0
 type DefaultTeamIntegrations struct {
-	Jira    []*TeamJiraIntegration    `json:"jira"`
-	Zendesk []*TeamZendeskIntegration `json:"zendesk"`
+	Jira      []*TeamJiraIntegration      `json:"jira"`
+	Zendesk   []*TeamZendeskIntegration   `json:"zendesk"`
+	Freescout []*TeamFreeScoutIntegration `json:"freescout"`
 }
 
 type TeamSpecSoftwareAsset struct {

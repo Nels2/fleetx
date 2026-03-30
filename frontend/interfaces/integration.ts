@@ -1,4 +1,4 @@
-export type IIntegrationType = "jira" | "zendesk";
+export type IIntegrationType = "jira" | "zendesk" | "freescout";
 
 export interface IJiraIntegration {
   url: string;
@@ -18,6 +18,16 @@ export interface IZendeskIntegration {
   enable_software_vulnerabilities?: boolean;
 }
 
+export interface IFreeScoutIntegration {
+  url: string;
+  api_token: string;
+  mailbox_id: number;
+  customer_email: string;
+  assign_to?: number;
+  enable_failing_policies?: boolean;
+  enable_software_vulnerabilities?: boolean;
+}
+
 export interface IIntegration {
   url: string;
   username?: string;
@@ -25,6 +35,9 @@ export interface IIntegration {
   api_token: string;
   project_key?: string;
   group_id?: number;
+  mailbox_id?: number;
+  customer_email?: string;
+  assign_to?: number;
   enable_failing_policies?: boolean;
   enable_software_vulnerabilities?: boolean;
   originalIndex?: number;
@@ -41,6 +54,9 @@ export interface IIntegrationFormData {
   apiToken: string;
   projectKey?: string;
   groupId?: number;
+  mailboxId?: number;
+  customerEmail?: string;
+  assignTo?: number;
   enableSoftwareVulnerabilities?: boolean;
 }
 
@@ -58,6 +74,9 @@ export interface IIntegrationFormErrors {
   apiToken?: string | null;
   groupId?: number | null;
   projectKey?: string | null;
+  mailboxId?: number | null;
+  customerEmail?: string | null;
+  assignTo?: number | null;
   enableSoftwareVulnerabilities?: boolean;
 }
 
@@ -78,6 +97,7 @@ interface ITeamCalendarSettings {
 export interface IZendeskJiraIntegrations {
   zendesk: IZendeskIntegration[];
   jira: IJiraIntegration[];
+  freescout: IFreeScoutIntegration[];
 }
 
 // reality is that IZendeskJiraIntegrations are optional – should be something like `extends
