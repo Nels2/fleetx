@@ -1,12 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { FormEvent, useState, useEffect } from "react";
 
-import Button from "components/buttons/Button";
-import InputField from "components/forms/fields/InputField";
-import validateEmail from "components/forms/validators/valid_email";
-import validUrl from "components/forms/validators/valid_url";
-import GitOpsModeTooltipWrapper from "components/GitOpsModeTooltipWrapper";
-import Spinner from "components/Spinner";
-import useFormValidation, { IFormErrors } from "hooks/useFormValidation";
 import {
   IIntegrationFormData,
   IIntegrationTableData,
@@ -15,14 +8,23 @@ import {
   IIntegrationType,
 } from "interfaces/integration";
 
+import Button from "components/buttons/Button";
+import InputField from "components/forms/fields/InputField";
+import validUrl from "components/forms/validators/valid_url";
+
+import Spinner from "components/Spinner";
+import TooltipWrapper from "components/TooltipWrapper";
+import GitOpsModeTooltipWrapper from "components/GitOpsModeTooltipWrapper";
+import { IInputFieldParseTarget } from "interfaces/form_field";
+
 const baseClass = "integration-form";
 
 interface IIntegrationFormProps {
   onCancel: () => void;
   onSubmit: (
-    integrationSubmitData: IIntegration[],
+    untegrationSubmitData: IIntegration[],
     integrationDestination: string
-  ) => void | Promise<unknown>;
+  ) => void;
   integrationEditing?: IIntegrationTableData;
   integrations: IZendeskJiraIntegrations;
   integrationEditingUrl?: string;
@@ -31,49 +33,15 @@ interface IIntegrationFormProps {
   integrationEditingApiToken?: string;
   integrationEditingProjectKey?: string;
   integrationEditingGroupId?: number;
+  integrationEditingMailboxId?: number;
+  integrationEditingCustomerEmail?: string;
+  integrationEditingAssignTo?: number;
   integrationEnableSoftwareVulnerabilities?: boolean;
   integrationEditingType?: IIntegrationType;
   destination?: string;
   testingConnection?: boolean;
   gitOpsModeEnabled?: boolean;
 }
-
-const validateForm = (
-  data: IIntegrationFormData,
-  destination: string
-): IFormErrors => {
-  const errors: IFormErrors = {};
-
-  if (!data.url) {
-    errors.url = "Enter a URL";
-  } else if (!validUrl({ url: data.url, protocols: ["https"] })) {
-    errors.url = "Enter a valid HTTPS URL";
-  }
-
-  if (!data.apiToken) {
-    errors.apiToken = "Enter an API token";
-  }
-
-  if (destination === "jira") {
-    if (!data.username) {
-      errors.username = "Enter a username";
-    }
-    if (!data.projectKey) {
-      errors.projectKey = "Enter a project key";
-    }
-  } else {
-    if (!data.email) {
-      errors.email = "Enter an email";
-    } else if (!validateEmail(data.email)) {
-      errors.email = "Enter a valid email";
-    }
-    if (!data.groupId) {
-      errors.groupId = "Enter a group ID";
-    }
-  }
-
-  return errors;
-};
 
 const IntegrationForm = ({
   onCancel,
@@ -86,63 +54,73 @@ const IntegrationForm = ({
   integrationEditingApiToken,
   integrationEditingProjectKey,
   integrationEditingGroupId,
+  integrationEditingMailboxId,
+  integrationEditingCustomerEmail,
+  integrationEditingAssignTo,
   integrationEnableSoftwareVulnerabilities,
   integrationEditingType,
   destination,
   testingConnection,
   gitOpsModeEnabled,
 }: IIntegrationFormProps): JSX.Element => {
-  const { jira: jiraIntegrations, zendesk: zendeskIntegrations } = integrations;
-
+  const {
+    jira: jiraIntegrations,
+    zendesk: zendeskIntegrations,
+    freescout: freescoutIntegrations,
+  } = integrations;
+  const [formData, setFormData] = useState<IIntegrationFormData>({
+    url: integrationEditingUrl || "",
+    username: integrationEditingUsername || "",
+    email: integrationEditingEmail || "",
+    apiToken: integrationEditingApiToken || "",
+    projectKey: integrationEditingProjectKey || "",
+    groupId: integrationEditingGroupId || 0,
+    mailboxId: integrationEditingMailboxId || 0,
+    customerEmail: integrationEditingCustomerEmail || "",
+    assignTo: integrationEditingAssignTo || 0,
+    enableSoftwareVulnerabilities:
+      integrationEnableSoftwareVulnerabilities || false,
+  });
   const [integrationDestination, setIntegrationDestination] = useState(
     integrationEditingType || destination || "jira"
   );
+  const [urlError, setUrlError] = useState<string | null>(null);
 
   useEffect(() => {
     setIntegrationDestination(destination || integrationEditingType || "jira");
   }, [destination, integrationEditingType]);
 
   const {
-    formData,
-    setField,
-    getError,
-    clearFieldError,
-    validateField,
-    handleSubmit,
-    isSubmitting,
-  } = useFormValidation<IIntegrationFormData>({
-    initialFormData: {
-      url: integrationEditingUrl || "",
-      username: integrationEditingUsername || "",
-      email: integrationEditingEmail || "",
-      apiToken: integrationEditingApiToken || "",
-      projectKey: integrationEditingProjectKey || "",
-      groupId: integrationEditingGroupId || 0,
-      enableSoftwareVulnerabilities:
-        integrationEnableSoftwareVulnerabilities || false,
-    },
-    validate: (data) => validateForm(data, integrationDestination),
-    isSubmitting: testingConnection,
-    skipTrim: ["apiToken"],
-  });
+    url,
+    username,
+    email,
+    apiToken,
+    projectKey,
+    groupId,
+    mailboxId,
+    customerEmail,
+    assignTo,
+  } = formData;
 
-  // Flipping destination unmounts the other shape's fields; drop their errors
-  // so a lingering value can't reappear on a flip back.
-  useEffect(() => {
-    if (integrationDestination === "jira") {
-      clearFieldError("email");
-      clearFieldError("groupId");
-    } else {
-      clearFieldError("username");
-      clearFieldError("projectKey");
+  const onInputChange = ({ name, value }: IInputFieldParseTarget) => {
+    setFormData({ ...formData, [name]: value });
+  };
+
+  const validateForm = () => {
+    let error = null;
+
+    if (url && !validUrl({ url, protocols: ["https"] })) {
+      error = "URL is not a valid HTTPS URL";
     }
-  }, [integrationDestination, clearFieldError]);
 
-  // IntegrationForm component can be used to create a new integration or edit
-  // an existing integration, so submitData will be assembled accordingly.
-  const createSubmitData = (data: IIntegrationFormData): IIntegration[] => {
+    setUrlError(error);
+  };
+
+  // IntegrationForm component can be used to create a new integration or edit an existing integration so submitData will be assembled accordingly
+  const createSubmitData = (): IIntegration[] => {
     let jiraIntegrationSubmitData = jiraIntegrations || [];
     let zendeskIntegrationSubmitData = zendeskIntegrations || [];
+    let freescoutIntegrationSubmitData = freescoutIntegrations || [];
 
     // Editing through UI is temporarily deprecated in 4.14
     if (integrationDestination === "jira") {
@@ -154,24 +132,58 @@ const IntegrationForm = ({
       ) {
         // Edit existing jira integration using array replacement
         jiraIntegrationSubmitData.splice(integrationEditing.originalIndex, 1, {
-          url: data.url,
-          username: data.username || "",
-          api_token: data.apiToken,
-          project_key: data.projectKey || "",
+          url,
+          username: username || "",
+          api_token: apiToken,
+          project_key: projectKey || "",
         });
       } else {
         // Create new jira integration at end of array
         jiraIntegrationSubmitData = [
           ...jiraIntegrationSubmitData,
           {
-            url: data.url,
-            username: data.username || "",
-            api_token: data.apiToken,
-            project_key: data.projectKey || "",
+            url,
+            username: username || "",
+            api_token: apiToken,
+            project_key: projectKey || "",
           },
         ];
       }
       return jiraIntegrationSubmitData;
+    }
+    if (integrationDestination === "freescout") {
+      if (
+        integrationEditing &&
+        (integrationEditing.originalIndex ||
+          integrationEditing.originalIndex === 0) &&
+        integrationEditing.customerEmail
+      ) {
+        // Edit existing freescout integration using array replacement
+        freescoutIntegrationSubmitData.splice(
+          integrationEditing.originalIndex,
+          1,
+          {
+            url,
+            api_token: apiToken,
+            mailbox_id: parseInt(mailboxId as any, 10) || 0,
+            customer_email: customerEmail || "",
+            assign_to: parseInt(assignTo as any, 10) || 0,
+          }
+        );
+      } else {
+        // Create new freescout integration at end of array
+        freescoutIntegrationSubmitData = [
+          ...freescoutIntegrationSubmitData,
+          {
+            url,
+            api_token: apiToken,
+            mailbox_id: parseInt(mailboxId as any, 10) || 0,
+            customer_email: customerEmail || "",
+            assign_to: parseInt(assignTo as any, 10) || 0,
+          },
+        ];
+      }
+      return freescoutIntegrationSubmitData;
     }
     if (
       integrationEditing &&
@@ -181,158 +193,222 @@ const IntegrationForm = ({
     ) {
       // Edit existing zendesk integration using array replacement
       zendeskIntegrationSubmitData.splice(integrationEditing.originalIndex, 1, {
-        url: data.url,
-        email: data.email || "",
-        api_token: data.apiToken,
-        group_id: Number(data.groupId) || 0,
+        url,
+        email: email || "",
+        api_token: apiToken,
+        group_id: Number(groupId) || 0,
       });
     } else {
       // Create new zendesk integration at end of array
       zendeskIntegrationSubmitData = [
         ...zendeskIntegrationSubmitData,
         {
-          url: data.url,
-          email: data.email || "",
-          api_token: data.apiToken,
-          group_id: Number(data.groupId) || 0,
+          url,
+          email: email || "",
+          api_token: apiToken,
+          group_id: Number(groupId) || 0,
         },
       ];
     }
     return zendeskIntegrationSubmitData;
   };
 
-  const onValidSubmit = (data: IIntegrationFormData) =>
-    onSubmit(createSubmitData(data), integrationDestination);
+  const onFormSubmit = (evt: FormEvent): void => {
+    evt.preventDefault();
 
-  if (testingConnection) {
-    return (
-      <div className={`${baseClass}__testing-connection`}>
-        <strong>Testing connection</strong>
-        <Spinner />
-      </div>
-    );
-  }
+    return onSubmit(createSubmitData(), integrationDestination);
+  };
 
   return (
-    <form
-      className={`${baseClass}__form`}
-      onSubmit={handleSubmit(onValidSubmit)}
-      autoComplete="off"
-      noValidate
-    >
-      <InputField
-        autofocus
-        name="url"
-        label="URL"
-        placeholder={
-          integrationDestination === "jira"
-            ? "https://example.atlassian.net"
-            : "https://example.zendesk.com"
-        }
-        value={formData.url}
-        onChange={(value: string) => setField("url", value)}
-        onFocus={() => clearFieldError("url")}
-        onBlur={() => validateField("url")}
-        error={getError("url")}
-        disabled={gitOpsModeEnabled || isSubmitting}
-      />
-      {integrationDestination === "jira" ? (
-        <InputField
-          name="username"
-          label="Username"
-          placeholder="name@example.com"
-          value={formData.username || ""}
-          onChange={(value: string) => setField("username", value)}
-          onFocus={() => clearFieldError("username")}
-          onBlur={() => validateField("username")}
-          error={getError("username")}
-          disabled={gitOpsModeEnabled || isSubmitting}
-        />
+    <>
+      {testingConnection ? (
+        <div className={`${baseClass}__testing-connection`}>
+          <b>Testing connection</b>
+          <Spinner />
+        </div>
       ) : (
-        <InputField
-          name="email"
-          label="Email"
-          placeholder="name@example.com"
-          type="email"
-          value={formData.email || ""}
-          onChange={(value: string) => setField("email", value)}
-          onFocus={() => clearFieldError("email")}
-          onBlur={() => validateField("email")}
-          error={getError("email")}
-          disabled={gitOpsModeEnabled || isSubmitting}
-        />
-      )}
-      <InputField
-        name="apiToken"
-        label="API token"
-        value={formData.apiToken}
-        onChange={(value: string) => setField("apiToken", value)}
-        onFocus={() => clearFieldError("apiToken")}
-        onBlur={() => validateField("apiToken")}
-        error={getError("apiToken")}
-        disabled={gitOpsModeEnabled || isSubmitting}
-      />
-      {integrationDestination === "jira" ? (
-        <InputField
-          name="projectKey"
-          label="Project key"
-          placeholder="JRAEXAMPLE"
-          value={formData.projectKey || ""}
-          onChange={(value: string) => setField("projectKey", value)}
-          onFocus={() => clearFieldError("projectKey")}
-          onBlur={() => validateField("projectKey")}
-          error={getError("projectKey")}
-          disabled={gitOpsModeEnabled || isSubmitting}
-          tooltip={
-            <>
-              To find the Jira project key, head to your project in Jira. Your
-              project key is located in the URL. For example, in
-              &ldquo;jira.example.com/projects/JRAEXAMPLE,&rdquo;
-              &ldquo;JRAEXAMPLE&rdquo; is your project key.
-            </>
-          }
-        />
-      ) : (
-        <InputField
-          name="groupId"
-          label="Group ID"
-          placeholder="28134038"
-          type="number"
-          value={formData.groupId || ""}
-          onChange={(value: string) =>
-            setField("groupId", value ? Number(value) : 0)
-          }
-          onFocus={() => clearFieldError("groupId")}
-          onBlur={() => validateField("groupId")}
-          error={getError("groupId")}
-          disabled={gitOpsModeEnabled || isSubmitting}
-          tooltip={
-            <>
-              To find the Zendesk group ID, select{" "}
-              <strong>Admin &gt; People &gt; Groups</strong>. Find the group and
-              select it. The group ID will appear in the search field.
-            </>
-          }
-        />
-      )}
-      <div className="modal-cta-wrap">
-        <GitOpsModeTooltipWrapper
-          tipOffset={8}
-          renderChildren={(disableChildren) => (
-            <Button
-              type="submit"
-              disabled={disableChildren || isSubmitting}
-              isLoading={isSubmitting}
-            >
-              Add
-            </Button>
+        <form
+          className={`${baseClass}__form`}
+          onSubmit={onFormSubmit}
+          autoComplete="off"
+          noValidate
+        >
+          <InputField
+            autofocus
+            name="url"
+            onChange={onInputChange}
+            label="URL"
+            placeholder={
+              integrationDestination === "jira"
+                ? "https://example.atlassian.net"
+                : integrationDestination === "zendesk"
+                ? "https://example.zendesk.com"
+                : "https://support.example.com"
+            }
+            parseTarget
+            value={url}
+            error={urlError}
+            onBlur={validateForm}
+            disabled={gitOpsModeEnabled}
+          />
+          {integrationDestination === "jira" ? (
+            <InputField
+              name="username"
+              onChange={onInputChange}
+              label="Username"
+              placeholder="name@example.com"
+              parseTarget
+              value={username}
+              disabled={gitOpsModeEnabled}
+            />
+          ) : integrationDestination === "zendesk" ? (
+            <InputField
+              name="email"
+              onChange={onInputChange}
+              label="Email"
+              placeholder="name@example.com"
+              parseTarget
+              value={email}
+              disabled={gitOpsModeEnabled}
+              type="email"
+            />
+          ) : (
+            <InputField
+              name="customerEmail"
+              onChange={onInputChange}
+              label="Customer email"
+              placeholder="support@example.com"
+              parseTarget
+              value={customerEmail}
+              disabled={gitOpsModeEnabled}
+              type="email"
+            />
           )}
-        />
-        <Button onClick={onCancel} variant="secondary">
-          Cancel
-        </Button>
-      </div>
-    </form>
+          <InputField
+            name="apiToken"
+            onChange={onInputChange}
+            label="API token"
+            parseTarget
+            value={apiToken}
+            disabled={gitOpsModeEnabled}
+          />
+          {integrationDestination === "jira" ? (
+            <InputField
+              name="projectKey"
+              onChange={onInputChange}
+              label="Project key"
+              placeholder="JRAEXAMPLE"
+              parseTarget
+              value={projectKey}
+              disabled={gitOpsModeEnabled}
+              tooltip={
+                <>
+                  To find the Jira project key, head to your project in <br />
+                  Jira. Your project key is located in the URL. For example, in{" "}
+                  <br />
+                  “jira.example.com/projects/JRAEXAMPLE,” <br />
+                  “JRAEXAMPLE” is your project key.
+                </>
+              }
+            />
+          ) : integrationDestination === "zendesk" ? (
+            <InputField
+              name="groupId"
+              onChange={onInputChange}
+              label="Group ID"
+              placeholder="28134038"
+              type="number"
+              parseTarget
+              value={groupId === 0 ? null : groupId}
+              disabled={gitOpsModeEnabled}
+              tooltip={
+                <>
+                  To find the Zendesk group ID, select{" "}
+                  <strong>Admin &gt; People &gt; Groups</strong>. Find the group
+                  and select it. The group ID will appear in the search field.
+                </>
+              }
+            />
+          ) : (
+            <>
+              <InputField
+                name="mailboxId"
+                onChange={onInputChange}
+                label="Mailbox ID"
+                placeholder="1"
+                type="number"
+                parseTarget
+                value={mailboxId === 0 ? null : mailboxId}
+                disabled={gitOpsModeEnabled}
+                tooltip={
+                  <>
+                    To find the FreeScout mailbox ID, open the mailbox in{" "}
+                    <br />
+                    FreeScout and copy the number from the URL.
+                  </>
+                }
+              />
+              <InputField
+                name="assignTo"
+                onChange={onInputChange}
+                label="Assign to (optional)"
+                placeholder="15"
+                type="number"
+                parseTarget
+                value={assignTo === 0 ? null : assignTo}
+                disabled={gitOpsModeEnabled}
+              />
+            </>
+          )}
+          <div className="modal-cta-wrap">
+            <GitOpsModeTooltipWrapper
+              tipOffset={8}
+              renderChildren={(disableChildren) => {
+                const formInvalid =
+                  integrationDestination === "jira"
+                    ? formData.url === "" ||
+                      formData.url.slice(0, 8) !== "https://" ||
+                      formData.username === "" ||
+                      formData.apiToken === "" ||
+                      formData.projectKey === ""
+                    : integrationDestination === "zendesk"
+                    ? formData.url === "" ||
+                      formData.url.slice(0, 8) !== "https://" ||
+                      formData.email === "" ||
+                      formData.apiToken === "" ||
+                      formData.groupId === 0
+                    : formData.url === "" ||
+                      formData.url.slice(0, 8) !== "https://" ||
+                      formData.customerEmail === "" ||
+                      formData.apiToken === "" ||
+                      formData.mailboxId === 0;
+                return (
+                  <TooltipWrapper
+                    tipContent="Complete all fields to save the integration."
+                    tooltipClass="add-integration-tooltip"
+                    position="top"
+                    disableTooltip={!formInvalid || disableChildren}
+                    underline={false}
+                    showArrow
+                    tipOffset={8}
+                  >
+                    <Button
+                      type="submit"
+                      disabled={formInvalid || disableChildren}
+                    >
+                      Add
+                    </Button>
+                  </TooltipWrapper>
+                );
+              }}
+            />
+            <Button onClick={onCancel} variant="secondary">
+              Cancel
+            </Button>
+          </div>
+        </form>
+      )}
+    </>
   );
 };
 

@@ -30,12 +30,22 @@ const PreviewTicketModal = ({
         alt="Jira ticket"
         className={`${baseClass}__jira-screenshot`}
       />
-    ) : (
+    ) : integrationType === "zendesk" ? (
       <img
         src={isPremiumTier ? ZendeskPreviewPremium : ZendeskPreview}
         alt="Zendesk ticket"
         className={`${baseClass}__zendesk-screenshot`}
       />
+    ) : (
+      <div className={`${baseClass}__freescout-preview`}>
+        <div className={`${baseClass}__freescout-card`}>
+          <h3>FreeScout ticket</h3>
+          <p>
+            This preview is not available yet. Fleet will send a conversation
+            with the policy or vulnerability details to your FreeScout mailbox.
+          </p>
+        </div>
+      </div>
     );
 
   return (
