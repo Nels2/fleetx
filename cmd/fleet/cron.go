@@ -733,6 +733,18 @@ func checkRHELOSVVulnerabilities(
 			continue
 		}
 
+		if err == nil {
+			suppressed, err := osv.SuppressFixedRHELNVDVulnerabilities(analyzeCtx, ds, version, vulnPath, logger, now)
+			if err != nil {
+				errHandler(analyzeCtx, logger, "suppressing fixed RHEL NVD vulnerabilities", err)
+			}
+			if suppressed > 0 {
+				logger.DebugContext(analyzeCtx, "rhel-osv-suppressed-fixed-nvd-vulnerabilities",
+					"platform", version.Name,
+					"suppressed", suppressed)
+			}
+		}
+
 		elapsed := time.Since(start)
 		logger.DebugContext(analyzeCtx, "rhel-osv-analysis-done",
 			"platform", version.Name,
