@@ -12083,11 +12083,18 @@ func testListSoftwareForVulnDetectionByOSVersion(t *testing.T, ds *Datastore) {
 	require.NoError(t, err)
 
 	names := make([]string, len(result))
+	sources := make(map[string]string, len(result))
 	for i, sw := range result {
 		names[i] = sw.Name
+		sources[sw.Name] = sw.Source
 	}
 	sort.Strings(names)
 	require.Equal(t, []string{"libbar", "libbaz", "libfoo"}, names)
+	require.Equal(t, map[string]string{
+		"libbar": "deb_packages",
+		"libbaz": "deb_packages",
+		"libfoo": "deb_packages",
+	}, sources)
 
 	// Verify no duplicates (libfoo exists on both hosts but should appear once).
 	require.Len(t, result, 3)
