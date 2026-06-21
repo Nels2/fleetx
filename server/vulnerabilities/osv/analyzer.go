@@ -490,12 +490,7 @@ func matchSoftwareToRHELOSV(software []fleet.Software, artifact *RHELOSVArtifact
 	var result []fleet.SoftwareVulnerability
 
 	for _, sw := range software {
-		packageName := sw.Name
-
-		// Map kernel variants to "kernel"
-		if _, isKernel := rhelKernelPackages[sw.Name]; isKernel {
-			packageName = "kernel"
-		}
+		packageName := rhelOSVPackageName(sw.Name)
 
 		vulns, ok := artifact.Vulnerabilities[packageName]
 		if !ok {
@@ -519,6 +514,13 @@ func matchSoftwareToRHELOSV(software []fleet.Software, artifact *RHELOSVArtifact
 	}
 
 	return result
+}
+
+func rhelOSVPackageName(name string) string {
+	if _, isKernel := rhelKernelPackages[name]; isKernel {
+		return "kernel"
+	}
+	return name
 }
 
 // isVulnerableRPM checks if an RPM software version is vulnerable based on OSV data.
@@ -576,6 +578,96 @@ func AnalyzeRHEL(
 	return analyzeOSV(ctx, ds, ver, fleet.RHELOSVSource, func(sw []fleet.Software) []fleet.SoftwareVulnerability {
 		return matchSoftwareToRHELOSV(sw, artifact)
 	}, collectVulns, logger)
+}
+
+// SuppressFixedRHELNVDVulnerabilities deletes NVD/CPE findings for RHEL-family
+// RPM packages when the RHEL OSV artifact covers the same package/CVE and RPM
+// EVR comparison shows the installed package is already fixed.
+func SuppressFixedRHELNVDVulnerabilities(
+	ctx context.Context,
+	ds fleet.Datastore,
+	ver fleet.OSVersion,
+	vulnPath string,
+	logger *slog.Logger,
+	date time.Time,
+) (int, error) {
+	if strings.ToLower(ver.Platform) != "rhel" {
+		return 0, ErrUnsupportedPlatform
+	}
+
+	// Fedora reports platform "rhel" but Red Hat OSV data does not cover Fedora.
+	if strings.Contains(ver.Name, "Fedora") {
+		return 0, ErrUnsupportedPlatform
+	}
+
+	artifact, err := loadRHELOSVArtifact(ctx, ver, vulnPath, logger, date)
+	if err != nil {
+		return 0, fmt.Errorf("loading RHEL OSV artifact: %w", err)
+	}
+
+	software, err := ds.ListSoftwareForVulnDetectionByOSVersion(ctx, ver)
+	if err != nil {
+		return 0, fmt.Errorf("listing software for OS version: %w", err)
+	}
+
+	rpmSoftware := make([]fleet.Software, 0, len(software))
+	softwareIDs := make([]uint, 0, len(software))
+	for _, sw := range software {
+		if sw.Source != "rpm_packages" {
+			continue
+		}
+		if _, ok := artifact.Vulnerabilities[rhelOSVPackageName(sw.Name)]; !ok {
+			continue
+		}
+		rpmSoftware = append(rpmSoftware, sw)
+		softwareIDs = append(softwareIDs, sw.ID)
+	}
+	if len(softwareIDs) == 0 {
+		return 0, nil
+	}
+
+	nvdVulnerabilities, err := ds.ListSoftwareVulnerabilitiesBySoftwareIDs(ctx, softwareIDs, fleet.NVDSource)
+	if err != nil {
+		return 0, fmt.Errorf("listing NVD software vulnerabilities: %w", err)
+	}
+	if len(nvdVulnerabilities) == 0 {
+		return 0, nil
+	}
+
+	nvdBySoftwareID := make(map[uint][]fleet.SoftwareVulnerability, len(rpmSoftware))
+	for _, vuln := range nvdVulnerabilities {
+		nvdBySoftwareID[vuln.SoftwareID] = append(nvdBySoftwareID[vuln.SoftwareID], vuln)
+	}
+
+	var toDelete []fleet.SoftwareVulnerability
+	for _, sw := range rpmSoftware {
+		packageName := rhelOSVPackageName(sw.Name)
+		osvVulns := artifact.Vulnerabilities[packageName]
+		for _, nvdVuln := range nvdBySoftwareID[sw.ID] {
+			for _, osvVuln := range osvVulns {
+				if nvdVuln.CVE != osvVuln.CVE {
+					continue
+				}
+				if !isVulnerableRPM(sw.Version, sw.Release, osvVuln) {
+					toDelete = append(toDelete, nvdVuln)
+				}
+				break
+			}
+		}
+	}
+
+	if len(toDelete) == 0 {
+		return 0, nil
+	}
+
+	for i := 0; i < len(toDelete); i += vulnBatchSize {
+		end := min(i+vulnBatchSize, len(toDelete))
+		if err := ds.DeleteSoftwareVulnerabilities(ctx, toDelete[i:end]); err != nil {
+			return 0, fmt.Errorf("deleting fixed RHEL NVD vulnerabilities: %w", err)
+		}
+	}
+
+	return len(toDelete), nil
 }
 
 // findLatestRHELOSVArtifactForVersion finds the most recent RHEL OSV artifact for a major version.

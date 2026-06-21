@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/fleetdm/fleet/v4/server/fleet"
+	"github.com/fleetdm/fleet/v4/server/mock"
 	"github.com/fleetdm/fleet/v4/server/ptr"
 	"github.com/stretchr/testify/require"
 )
@@ -625,6 +626,19 @@ func TestLoadOSVArtifactRejectsEmpty(t *testing.T) {
 	require.Contains(t, err.Error(), "no vulnerabilities")
 }
 
+func writeGzippedFile(t *testing.T, path string, contents string) {
+	t.Helper()
+
+	f, err := os.Create(path)
+	require.NoError(t, err)
+	defer f.Close()
+
+	gz := gzip.NewWriter(f)
+	_, err = gz.Write([]byte(contents))
+	require.NoError(t, err)
+	require.NoError(t, gz.Close())
+}
+
 // TestLoadRHELOSVArtifactRejectsEmpty mirrors the Ubuntu OSV check for the RHEL OSV artifact.
 func TestLoadRHELOSVArtifactRejectsEmpty(t *testing.T) {
 	tmpDir := t.TempDir()
@@ -777,6 +791,77 @@ func TestIsVulnerableRPM(t *testing.T) {
 	}
 }
 
+func TestIsVulnerableRPMRockyRHEL96Backports(t *testing.T) {
+	tests := []struct {
+		name     string
+		version  string
+		release  string
+		vuln     OSVVulnerability
+		expected bool
+	}{
+		{
+			name:    "CVE-2023-44487 vulnerable before el9 fixed release",
+			version: "2.4.57", release: "8.el9_2.4",
+			vuln:     OSVVulnerability{CVE: "CVE-2023-44487", Fixed: "0:2.4.57-8.el9_2.5", Introduced: "0"},
+			expected: true,
+		},
+		{
+			name:    "CVE-2023-44487 patched at el9 fixed release",
+			version: "2.4.57", release: "8.el9_2.5",
+			vuln:     OSVVulnerability{CVE: "CVE-2023-44487", Fixed: "0:2.4.57-8.el9_2.5", Introduced: "0"},
+			expected: false,
+		},
+		{
+			name:    "CVE-2024-38475 vulnerable before el9_6 fixed release",
+			version: "2.4.62", release: "4.el9_6.3",
+			vuln:     OSVVulnerability{CVE: "CVE-2024-38475", Fixed: "0:2.4.62-4.el9_6.4", Introduced: "0"},
+			expected: true,
+		},
+		{
+			name:    "CVE-2024-38475 patched at el9_6 fixed release",
+			version: "2.4.62", release: "4.el9_6.4",
+			vuln:     OSVVulnerability{CVE: "CVE-2024-38475", Fixed: "0:2.4.62-4.el9_6.4", Introduced: "0"},
+			expected: false,
+		},
+		{
+			name:    "CVE-2024-38475 patched with Rocky rebuild suffix",
+			version: "2.4.62", release: "4.el9_6.4.rocky.0.1",
+			vuln:     OSVVulnerability{CVE: "CVE-2024-38475", Fixed: "0:2.4.62-4.el9_6.4", Introduced: "0"},
+			expected: false,
+		},
+		{
+			name:    "CVE-2025-24813 vulnerable before el9_6 fixed release",
+			version: "9.0.87", release: "1.el9_6",
+			vuln:     OSVVulnerability{CVE: "CVE-2025-24813", Fixed: "0:9.0.87-1.el9_6.1", Introduced: "0"},
+			expected: true,
+		},
+		{
+			name:    "CVE-2025-24813 patched at el9_6 fixed release",
+			version: "9.0.87", release: "1.el9_6.1",
+			vuln:     OSVVulnerability{CVE: "CVE-2025-24813", Fixed: "0:9.0.87-1.el9_6.1", Introduced: "0"},
+			expected: false,
+		},
+		{
+			name:    "CVE-2025-48384 vulnerable before el9_6 fixed release",
+			version: "2.43.5", release: "1.el9_6",
+			vuln:     OSVVulnerability{CVE: "CVE-2025-48384", Fixed: "0:2.43.5-2.el9_6", Introduced: "0"},
+			expected: true,
+		},
+		{
+			name:    "CVE-2025-48384 patched at el9_6 fixed release",
+			version: "2.43.5", release: "2.el9_6",
+			vuln:     OSVVulnerability{CVE: "CVE-2025-48384", Fixed: "0:2.43.5-2.el9_6", Introduced: "0"},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.expected, isVulnerableRPM(tt.version, tt.release, tt.vuln))
+		})
+	}
+}
+
 func TestMatchSoftwareToRHELOSV(t *testing.T) {
 	artifact := &RHELOSVArtifact{
 		RHELVersion: "9",
@@ -854,4 +939,79 @@ func TestMatchSoftwareToRHELOSV(t *testing.T) {
 		result := matchSoftwareToRHELOSV(software, artifact)
 		require.Empty(t, result)
 	})
+}
+
+func TestSuppressFixedRHELNVDVulnerabilities(t *testing.T) {
+	tmpDir := t.TempDir()
+	writeGzippedFile(t, filepath.Join(tmpDir, "osv-rhel-9-2026-06-21.json.gz"), `{
+		"schema_version":"1.0.0",
+		"rhel_version":"9",
+		"generated":"2026-06-21T00:00:00Z",
+		"total_cves":5,
+		"total_packages":5,
+		"vulnerabilities":{
+			"httpd":[
+				{"cve":"CVE-2023-44487","introduced":"0","fixed":"0:2.4.57-8.el9_2.5"},
+				{"cve":"CVE-2024-38475","introduced":"0","fixed":"0:2.4.62-4.el9_6.4"}
+			],
+			"tomcat":[
+				{"cve":"CVE-2025-24813","introduced":"0","fixed":"0:9.0.87-1.el9_6.1"}
+			],
+			"git":[
+				{"cve":"CVE-2025-48384","introduced":"0","fixed":"0:2.43.5-2.el9_6"}
+			],
+			"kernel":[
+				{"cve":"CVE-2025-99999","introduced":"0","fixed":"0:5.14.0-611.8.1.el9_7"}
+			]
+		}
+	}`)
+
+	software := []fleet.Software{
+		{ID: 1, Name: "httpd", Version: "2.4.62", Source: "rpm_packages", Release: "4.el9_6.4.rocky.0.1"},
+		{ID: 2, Name: "git", Version: "2.43.5", Source: "rpm_packages", Release: "1.el9_6"},
+		{ID: 3, Name: "tomcat", Version: "9.0.87", Source: "programs", Release: "1.el9_6.1"},
+		{ID: 4, Name: "nginx", Version: "1.20.1", Source: "rpm_packages", Release: "1.el9_6"},
+		{ID: 5, Name: "kernel-core", Version: "5.14.0", Source: "rpm_packages", Release: "611.8.1.el9_7"},
+	}
+	nvdVulns := []fleet.SoftwareVulnerability{
+		{SoftwareID: 1, CVE: "CVE-2023-44487"},
+		{SoftwareID: 1, CVE: "CVE-2024-38475"},
+		{SoftwareID: 2, CVE: "CVE-2025-48384"},
+		{SoftwareID: 3, CVE: "CVE-2025-24813"},
+		{SoftwareID: 4, CVE: "CVE-2025-00001"},
+		{SoftwareID: 5, CVE: "CVE-2025-99999"},
+	}
+
+	ds := &mock.DataStore{}
+	ds.ListSoftwareForVulnDetectionByOSVersionFunc = func(ctx context.Context, osVer fleet.OSVersion) ([]fleet.Software, error) {
+		require.Equal(t, "rhel", osVer.Platform)
+		require.Equal(t, "Rocky Linux 9.6.0", osVer.Name)
+		return software, nil
+	}
+	ds.ListSoftwareVulnerabilitiesBySoftwareIDsFunc = func(ctx context.Context, softwareIDs []uint, source fleet.VulnerabilitySource) ([]fleet.SoftwareVulnerability, error) {
+		require.Equal(t, fleet.NVDSource, source)
+		require.ElementsMatch(t, []uint{1, 2, 5}, softwareIDs)
+		return nvdVulns, nil
+	}
+	var deleted []fleet.SoftwareVulnerability
+	ds.DeleteSoftwareVulnerabilitiesFunc = func(ctx context.Context, vulnerabilities []fleet.SoftwareVulnerability) error {
+		deleted = append(deleted, vulnerabilities...)
+		return nil
+	}
+
+	count, err := SuppressFixedRHELNVDVulnerabilities(
+		context.Background(),
+		ds,
+		fleet.OSVersion{Platform: "rhel", Name: "Rocky Linux 9.6.0", Version: "9.6.0"},
+		tmpDir,
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
+		time.Time{},
+	)
+	require.NoError(t, err)
+	require.Equal(t, 3, count)
+	require.ElementsMatch(t, []fleet.SoftwareVulnerability{
+		{SoftwareID: 1, CVE: "CVE-2023-44487"},
+		{SoftwareID: 1, CVE: "CVE-2024-38475"},
+		{SoftwareID: 5, CVE: "CVE-2025-99999"},
+	}, deleted)
 }
