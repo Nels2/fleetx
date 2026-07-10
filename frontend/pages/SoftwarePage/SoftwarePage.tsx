@@ -5,11 +5,7 @@ import { Tab, TabList, Tabs } from "react-tabs";
 
 import PATHS from "router/paths";
 import { IConfig } from "interfaces/config";
-import {
-  IJiraIntegration,
-  IZendeskIntegration,
-  IFreeScoutIntegration,
-} from "interfaces/integration";
+import { IJiraIntegration, IZendeskIntegration } from "interfaces/integration";
 import { APP_CONTEXT_ALL_TEAMS_ID, ITeamConfig } from "interfaces/team";
 import { SelectedPlatform } from "interfaces/platform";
 import { IWebhookSoftwareVulnerabilities } from "interfaces/webhook";
@@ -104,7 +100,6 @@ interface ISoftwareAutomations {
   integrations: {
     jira: IJiraIntegration[];
     zendesk: IZendeskIntegration[];
-    freescout: IFreeScoutIntegration[];
   };
 }
 
