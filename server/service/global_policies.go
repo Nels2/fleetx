@@ -278,12 +278,7 @@ func (svc *Service) ResetAutomation(ctx context.Context, teamIDs, policyIDs []ui
 	if err != nil {
 		return err
 	}
-	allAutoPolicies := automationPolicies(
-		ac.WebhookSettings.FailingPoliciesWebhook,
-		ac.Integrations.Jira,
-		ac.Integrations.Zendesk,
-		ac.Integrations.Freescout,
-	)
+	allAutoPolicies := automationPolicies(ac.WebhookSettings.FailingPoliciesWebhook, ac.Integrations.Jira, ac.Integrations.Zendesk)
 	pIDs := make(map[uint]struct{})
 	for _, id := range policyIDs {
 		pIDs[id] = struct{}{}
@@ -336,12 +331,7 @@ func (svc *Service) ResetAutomation(ctx context.Context, teamIDs, policyIDs []ui
 			}
 			teamConfig = t.Config
 		}
-		for pID := range teamAutomationPolicies(
-			teamConfig.WebhookSettings.FailingPoliciesWebhook,
-			teamConfig.Integrations.Jira,
-			teamConfig.Integrations.Zendesk,
-			teamConfig.Integrations.Freescout,
-		) {
+		for pID := range teamAutomationPolicies(teamConfig.WebhookSettings.FailingPoliciesWebhook, teamConfig.Integrations.Jira, teamConfig.Integrations.Zendesk) {
 			allAutoPolicies[pID] = struct{}{}
 		}
 	}
@@ -365,12 +355,7 @@ func (svc *Service) ResetAutomation(ctx context.Context, teamIDs, policyIDs []ui
 	return nil
 }
 
-func automationPolicies(
-	wh fleet.FailingPoliciesWebhookSettings,
-	ji []*fleet.JiraIntegration,
-	zi []*fleet.ZendeskIntegration,
-	fi []*fleet.FreeScoutIntegration,
-) map[uint]struct{} {
+func automationPolicies(wh fleet.FailingPoliciesWebhookSettings, ji []*fleet.JiraIntegration, zi []*fleet.ZendeskIntegration) map[uint]struct{} {
 	enabled := wh.Enable
 	for _, j := range ji {
 		if j.EnableFailingPolicies {
@@ -379,11 +364,6 @@ func automationPolicies(
 	}
 	for _, z := range zi {
 		if z.EnableFailingPolicies {
-			enabled = true
-		}
-	}
-	for _, f := range fi {
-		if f.EnableFailingPolicies {
 			enabled = true
 		}
 	}
@@ -397,12 +377,7 @@ func automationPolicies(
 	return pols
 }
 
-func teamAutomationPolicies(
-	wh fleet.FailingPoliciesWebhookSettings,
-	ji []*fleet.TeamJiraIntegration,
-	zi []*fleet.TeamZendeskIntegration,
-	fi []*fleet.TeamFreeScoutIntegration,
-) map[uint]struct{} {
+func teamAutomationPolicies(wh fleet.FailingPoliciesWebhookSettings, ji []*fleet.TeamJiraIntegration, zi []*fleet.TeamZendeskIntegration) map[uint]struct{} {
 	enabled := wh.Enable
 	for _, j := range ji {
 		if j.EnableFailingPolicies {
@@ -411,11 +386,6 @@ func teamAutomationPolicies(
 	}
 	for _, z := range zi {
 		if z.EnableFailingPolicies {
-			enabled = true
-		}
-	}
-	for _, f := range fi {
-		if f.EnableFailingPolicies {
 			enabled = true
 		}
 	}

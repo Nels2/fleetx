@@ -164,7 +164,6 @@ const DEFAULT_CONFIG_MOCK: IConfig = {
   integrations: {
     jira: [],
     zendesk: [],
-    freescout: [],
     google_calendar: [],
     google_workspace: [],
   },
