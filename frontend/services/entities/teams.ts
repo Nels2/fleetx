@@ -141,7 +141,6 @@ export default {
       const {
         jira,
         zendesk,
-        freescout,
         google_calendar,
         conditional_access_enabled,
       } = integrations;
@@ -149,13 +148,11 @@ export default {
         "enable_failing_policies",
         "group_id",
         "project_key",
-        "mailbox_id",
         "url",
       ];
       requestBody.integrations = {
         jira: jira?.map((j) => pick(j, teamIntegrationProps)),
         zendesk: zendesk?.map((z) => pick(z, teamIntegrationProps)),
-        freescout: freescout?.map((f) => pick(f, teamIntegrationProps)),
         google_calendar,
         conditional_access_enabled,
       };

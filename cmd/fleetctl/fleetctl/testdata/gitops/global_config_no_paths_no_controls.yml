@@ -113,7 +113,6 @@ org_settings:
   integrations:
     jira: []
     zendesk: []
-    freescout: []
     google_calendar:
       - domain: example.com
         api_key_json: {
