@@ -84,7 +84,6 @@
     "integrations": {
       "jira": null,
       "zendesk": null,
-      "freescout": null,
       "google_calendar": null,
       "certificates_idp_introspection_urls": null,
       "certificates_idp_client_ids": null,

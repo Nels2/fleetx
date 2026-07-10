@@ -148,7 +148,6 @@ const AutomationsModal = ({
         const integrations: ITeamIntegrations = {
           jira: otherData?.integrations.jira ?? [],
           zendesk: otherData?.integrations.zendesk ?? [],
-          freescout: otherData?.integrations.freescout ?? [],
         };
 
         const teamPayload: Partial<IUpdateTeamFormData> = { integrations };
@@ -181,7 +180,6 @@ const AutomationsModal = ({
         const integrations: ITeamIntegrations = {
           jira: otherData?.integrations.jira ?? [],
           zendesk: otherData?.integrations.zendesk ?? [],
-          freescout: otherData?.integrations.freescout ?? [],
         };
         if (calendarData) {
           integrations.google_calendar = {
