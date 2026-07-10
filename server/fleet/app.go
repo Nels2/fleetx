@@ -887,9 +887,6 @@ func (c *AppConfig) Obfuscate() {
 	if c.MDM.AppleAccountProvisioning.Configured() || c.MDM.AppleAccountProvisioning.OAuthIdPClientSecret.Value != "" {
 		c.MDM.AppleAccountProvisioning.OAuthIdPClientSecret = optjson.SetString(MaskedPassword)
 	}
-	for _, freescoutIntegration := range c.Integrations.Freescout {
-		freescoutIntegration.APIToken = MaskedPassword
-	}
 	// // TODO(hca): confirm that we're properly masking credentials in the new endpoints
 	// if c.Integrations.NDESSCEPProxy.Valid {
 	// 	c.Integrations.NDESSCEPProxy.Value.Password = MaskedPassword
@@ -970,13 +967,6 @@ func (c *AppConfig) Copy() *AppConfig {
 		for i, z := range c.Integrations.Zendesk {
 			zd := *z
 			clone.Integrations.Zendesk[i] = &zd
-		}
-	}
-	if c.Integrations.Freescout != nil {
-		clone.Integrations.Freescout = make([]*FreeScoutIntegration, len(c.Integrations.Freescout))
-		for i, f := range c.Integrations.Freescout {
-			freescout := *f
-			clone.Integrations.Freescout[i] = &freescout
 		}
 	}
 	if len(c.Integrations.GoogleCalendar) > 0 {
