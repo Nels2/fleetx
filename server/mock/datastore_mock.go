@@ -400,6 +400,16 @@ type OSVersionsByCVEFunc func(ctx context.Context, cve string, teamID *uint) ([]
 
 type SoftwareByCVEFunc func(ctx context.Context, cve string, teamID *uint) ([]*fleet.VulnerableSoftware, time.Time, error)
 
+type CreateVulnerabilitySuppressionRuleFunc func(ctx context.Context, rule *fleet.VulnerabilitySuppressionRule) (*fleet.VulnerabilitySuppressionRule, error)
+
+type VulnerabilitySuppressionRuleFunc func(ctx context.Context, id uint) (*fleet.VulnerabilitySuppressionRule, error)
+
+type ListVulnerabilitySuppressionRulesFunc func(ctx context.Context, opt fleet.VulnerabilitySuppressionRuleListOptions) ([]*fleet.VulnerabilitySuppressionRule, error)
+
+type SaveVulnerabilitySuppressionRuleFunc func(ctx context.Context, rule *fleet.VulnerabilitySuppressionRule) (*fleet.VulnerabilitySuppressionRule, error)
+
+type DeleteVulnerabilitySuppressionRuleFunc func(ctx context.Context, id uint, actorID uint) error
+
 type OSVersionFunc func(ctx context.Context, osVersionID uint, teamFilter *fleet.TeamFilter) (*fleet.OSVersion, *time.Time, error)
 
 type UpdateOSVersionsFunc func(ctx context.Context) error
@@ -2950,6 +2960,21 @@ type DataStore struct {
 
 	SoftwareByCVEFunc        SoftwareByCVEFunc
 	SoftwareByCVEFuncInvoked bool
+
+	CreateVulnerabilitySuppressionRuleFunc        CreateVulnerabilitySuppressionRuleFunc
+	CreateVulnerabilitySuppressionRuleFuncInvoked bool
+
+	VulnerabilitySuppressionRuleFunc        VulnerabilitySuppressionRuleFunc
+	VulnerabilitySuppressionRuleFuncInvoked bool
+
+	ListVulnerabilitySuppressionRulesFunc        ListVulnerabilitySuppressionRulesFunc
+	ListVulnerabilitySuppressionRulesFuncInvoked bool
+
+	SaveVulnerabilitySuppressionRuleFunc        SaveVulnerabilitySuppressionRuleFunc
+	SaveVulnerabilitySuppressionRuleFuncInvoked bool
+
+	DeleteVulnerabilitySuppressionRuleFunc        DeleteVulnerabilitySuppressionRuleFunc
+	DeleteVulnerabilitySuppressionRuleFuncInvoked bool
 
 	OSVersionFunc        OSVersionFunc
 	OSVersionFuncInvoked bool
@@ -7247,6 +7272,41 @@ func (s *DataStore) SoftwareByCVE(ctx context.Context, cve string, teamID *uint)
 	s.SoftwareByCVEFuncInvoked = true
 	s.mu.Unlock()
 	return s.SoftwareByCVEFunc(ctx, cve, teamID)
+}
+
+func (s *DataStore) CreateVulnerabilitySuppressionRule(ctx context.Context, rule *fleet.VulnerabilitySuppressionRule) (*fleet.VulnerabilitySuppressionRule, error) {
+	s.mu.Lock()
+	s.CreateVulnerabilitySuppressionRuleFuncInvoked = true
+	s.mu.Unlock()
+	return s.CreateVulnerabilitySuppressionRuleFunc(ctx, rule)
+}
+
+func (s *DataStore) VulnerabilitySuppressionRule(ctx context.Context, id uint) (*fleet.VulnerabilitySuppressionRule, error) {
+	s.mu.Lock()
+	s.VulnerabilitySuppressionRuleFuncInvoked = true
+	s.mu.Unlock()
+	return s.VulnerabilitySuppressionRuleFunc(ctx, id)
+}
+
+func (s *DataStore) ListVulnerabilitySuppressionRules(ctx context.Context, opt fleet.VulnerabilitySuppressionRuleListOptions) ([]*fleet.VulnerabilitySuppressionRule, error) {
+	s.mu.Lock()
+	s.ListVulnerabilitySuppressionRulesFuncInvoked = true
+	s.mu.Unlock()
+	return s.ListVulnerabilitySuppressionRulesFunc(ctx, opt)
+}
+
+func (s *DataStore) SaveVulnerabilitySuppressionRule(ctx context.Context, rule *fleet.VulnerabilitySuppressionRule) (*fleet.VulnerabilitySuppressionRule, error) {
+	s.mu.Lock()
+	s.SaveVulnerabilitySuppressionRuleFuncInvoked = true
+	s.mu.Unlock()
+	return s.SaveVulnerabilitySuppressionRuleFunc(ctx, rule)
+}
+
+func (s *DataStore) DeleteVulnerabilitySuppressionRule(ctx context.Context, id uint, actorID uint) error {
+	s.mu.Lock()
+	s.DeleteVulnerabilitySuppressionRuleFuncInvoked = true
+	s.mu.Unlock()
+	return s.DeleteVulnerabilitySuppressionRuleFunc(ctx, id, actorID)
 }
 
 func (s *DataStore) OSVersion(ctx context.Context, osVersionID uint, teamFilter *fleet.TeamFilter) (*fleet.OSVersion, *time.Time, error) {

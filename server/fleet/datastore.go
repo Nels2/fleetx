@@ -566,6 +566,11 @@ type Datastore interface {
 	OSVersions(ctx context.Context, teamFilter *TeamFilter, platform *string, name *string, version *string) (*OSVersions, error)
 	OSVersionsByCVE(ctx context.Context, cve string, teamID *uint) ([]*VulnerableOS, time.Time, error)
 	SoftwareByCVE(ctx context.Context, cve string, teamID *uint) ([]*VulnerableSoftware, time.Time, error)
+	CreateVulnerabilitySuppressionRule(ctx context.Context, rule *VulnerabilitySuppressionRule) (*VulnerabilitySuppressionRule, error)
+	VulnerabilitySuppressionRule(ctx context.Context, id uint) (*VulnerabilitySuppressionRule, error)
+	ListVulnerabilitySuppressionRules(ctx context.Context, opt VulnerabilitySuppressionRuleListOptions) ([]*VulnerabilitySuppressionRule, error)
+	SaveVulnerabilitySuppressionRule(ctx context.Context, rule *VulnerabilitySuppressionRule) (*VulnerabilitySuppressionRule, error)
+	DeleteVulnerabilitySuppressionRule(ctx context.Context, id uint, actorID uint) error
 	// OSVersion returns the OSVersion with the provided ID. If teamFilter is not nil, then the OSVersion is filtered.
 	// The returned OSVersion is accompanied by the time it was last updated.
 	OSVersion(ctx context.Context, osVersionID uint, teamFilter *TeamFilter) (*OSVersion, *time.Time, error)

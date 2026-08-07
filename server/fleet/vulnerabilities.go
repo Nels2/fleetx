@@ -156,6 +156,7 @@ type VulnListOptions struct {
 	ValidSortColumns []string
 	TeamID           *uint `query:"team_id,optional" renameto:"fleet_id"`
 	KnownExploit     bool  `query:"exploit,optional"`
+	IncludeDismissed bool  `query:"include_dismissed,optional"`
 }
 
 func (opt VulnListOptions) HasValidSortColumn() bool {

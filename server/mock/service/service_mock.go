@@ -553,6 +553,16 @@ type ListOSVersionsByCVEFunc func(ctx context.Context, cve string, teamID *uint)
 
 type ListSoftwareByCVEFunc func(ctx context.Context, cve string, teamID *uint) (result []*fleet.VulnerableSoftware, updatedAt time.Time, err error)
 
+type CreateVulnerabilitySuppressionRuleFunc func(ctx context.Context, rule *fleet.VulnerabilitySuppressionRule) (*fleet.VulnerabilitySuppressionRule, error)
+
+type VulnerabilitySuppressionRuleFunc func(ctx context.Context, id uint) (*fleet.VulnerabilitySuppressionRule, error)
+
+type ListVulnerabilitySuppressionRulesFunc func(ctx context.Context, opt fleet.VulnerabilitySuppressionRuleListOptions) ([]*fleet.VulnerabilitySuppressionRule, error)
+
+type SaveVulnerabilitySuppressionRuleFunc func(ctx context.Context, rule *fleet.VulnerabilitySuppressionRule) (*fleet.VulnerabilitySuppressionRule, error)
+
+type DeleteVulnerabilitySuppressionRuleFunc func(ctx context.Context, id uint) error
+
 type NewTeamPolicyFunc func(ctx context.Context, teamID uint, p fleet.NewTeamPolicyPayload) (*fleet.Policy, error)
 
 type ListTeamPoliciesFunc func(ctx context.Context, teamID uint, opts fleet.ListOptions, iopts fleet.ListOptions, mergeInherited bool, automationType fleet.PolicyAutomationType, platform string) (teamPolicies []*fleet.Policy, inheritedPolicies []*fleet.Policy, err error)
@@ -1815,6 +1825,21 @@ type Service struct {
 
 	ListSoftwareByCVEFunc        ListSoftwareByCVEFunc
 	ListSoftwareByCVEFuncInvoked bool
+
+	CreateVulnerabilitySuppressionRuleFunc        CreateVulnerabilitySuppressionRuleFunc
+	CreateVulnerabilitySuppressionRuleFuncInvoked bool
+
+	VulnerabilitySuppressionRuleFunc        VulnerabilitySuppressionRuleFunc
+	VulnerabilitySuppressionRuleFuncInvoked bool
+
+	ListVulnerabilitySuppressionRulesFunc        ListVulnerabilitySuppressionRulesFunc
+	ListVulnerabilitySuppressionRulesFuncInvoked bool
+
+	SaveVulnerabilitySuppressionRuleFunc        SaveVulnerabilitySuppressionRuleFunc
+	SaveVulnerabilitySuppressionRuleFuncInvoked bool
+
+	DeleteVulnerabilitySuppressionRuleFunc        DeleteVulnerabilitySuppressionRuleFunc
+	DeleteVulnerabilitySuppressionRuleFuncInvoked bool
 
 	NewTeamPolicyFunc        NewTeamPolicyFunc
 	NewTeamPolicyFuncInvoked bool
@@ -4375,6 +4400,41 @@ func (s *Service) ListSoftwareByCVE(ctx context.Context, cve string, teamID *uin
 	s.ListSoftwareByCVEFuncInvoked = true
 	s.mu.Unlock()
 	return s.ListSoftwareByCVEFunc(ctx, cve, teamID)
+}
+
+func (s *Service) CreateVulnerabilitySuppressionRule(ctx context.Context, rule *fleet.VulnerabilitySuppressionRule) (*fleet.VulnerabilitySuppressionRule, error) {
+	s.mu.Lock()
+	s.CreateVulnerabilitySuppressionRuleFuncInvoked = true
+	s.mu.Unlock()
+	return s.CreateVulnerabilitySuppressionRuleFunc(ctx, rule)
+}
+
+func (s *Service) VulnerabilitySuppressionRule(ctx context.Context, id uint) (*fleet.VulnerabilitySuppressionRule, error) {
+	s.mu.Lock()
+	s.VulnerabilitySuppressionRuleFuncInvoked = true
+	s.mu.Unlock()
+	return s.VulnerabilitySuppressionRuleFunc(ctx, id)
+}
+
+func (s *Service) ListVulnerabilitySuppressionRules(ctx context.Context, opt fleet.VulnerabilitySuppressionRuleListOptions) ([]*fleet.VulnerabilitySuppressionRule, error) {
+	s.mu.Lock()
+	s.ListVulnerabilitySuppressionRulesFuncInvoked = true
+	s.mu.Unlock()
+	return s.ListVulnerabilitySuppressionRulesFunc(ctx, opt)
+}
+
+func (s *Service) SaveVulnerabilitySuppressionRule(ctx context.Context, rule *fleet.VulnerabilitySuppressionRule) (*fleet.VulnerabilitySuppressionRule, error) {
+	s.mu.Lock()
+	s.SaveVulnerabilitySuppressionRuleFuncInvoked = true
+	s.mu.Unlock()
+	return s.SaveVulnerabilitySuppressionRuleFunc(ctx, rule)
+}
+
+func (s *Service) DeleteVulnerabilitySuppressionRule(ctx context.Context, id uint) error {
+	s.mu.Lock()
+	s.DeleteVulnerabilitySuppressionRuleFuncInvoked = true
+	s.mu.Unlock()
+	return s.DeleteVulnerabilitySuppressionRuleFunc(ctx, id)
 }
 
 func (s *Service) NewTeamPolicy(ctx context.Context, teamID uint, p fleet.NewTeamPolicyPayload) (*fleet.Policy, error) {
