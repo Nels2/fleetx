@@ -34,6 +34,7 @@ interface ISoftwareVulnerabilitiesProps {
   currentPage: number;
   teamId?: number;
   showExploitedVulnerabilitiesOnly: boolean;
+  showDismissedVulnerabilities: boolean;
 }
 
 const SoftwareVulnerabilities = ({
@@ -46,6 +47,7 @@ const SoftwareVulnerabilities = ({
   currentPage,
   teamId,
   showExploitedVulnerabilitiesOnly,
+  showDismissedVulnerabilities,
 }: ISoftwareVulnerabilitiesProps) => {
   const [tableData, setTableData] = useState<IVulnerabilitiesResponse>();
   const [
@@ -61,6 +63,7 @@ const SoftwareVulnerabilities = ({
     teamId,
     query,
     exploit: showExploitedVulnerabilitiesOnly,
+    include_dismissed: showDismissedVulnerabilities,
   };
 
   const isExactMatchQuery = (() => {
@@ -254,6 +257,7 @@ const SoftwareVulnerabilities = ({
         emptyStateReason={emptyStateReason}
         query={query}
         showExploitedVulnerabilitiesOnly={showExploitedVulnerabilitiesOnly}
+        showDismissedVulnerabilities={showDismissedVulnerabilities}
         isSoftwareEnabled={isSoftwareEnabled}
         perPage={perPage}
         orderDirection={orderDirection}

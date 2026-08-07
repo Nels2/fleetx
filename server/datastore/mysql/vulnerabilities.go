@@ -373,6 +373,10 @@ func buildListVulnerabilitiesSQL(opt *fleet.VulnListOptions) (string, []any, err
 		inner.WriteString(" AND vhc.global_stats = 0 AND vhc.team_id = ?")
 		args = append(args, *opt.TeamID)
 	}
+	innerStmt, suppressionArgs := appendUnsuppressedVulnerabilityFilter(inner.String(), opt)
+	inner.Reset()
+	inner.WriteString(innerStmt)
+	args = append(args, suppressionArgs...)
 	if opt.KnownExploit {
 		inner.WriteString(" AND cm.cisa_known_exploit = 1")
 	}
@@ -474,6 +478,8 @@ func (ds *Datastore) CountVulnerabilities(ctx context.Context, opt fleet.VulnLis
 		selectStmt += " AND vhc.global_stats = 0 AND vhc.team_id = ?"
 		args = append(args, *opt.TeamID)
 	}
+	selectStmt, suppressionArgs := appendUnsuppressedVulnerabilityFilter(selectStmt, &opt)
+	args = append(args, suppressionArgs...)
 	if opt.KnownExploit {
 		selectStmt += " AND cm.cisa_known_exploit = 1"
 	}
@@ -487,6 +493,24 @@ func (ds *Datastore) CountVulnerabilities(ctx context.Context, opt fleet.VulnLis
 	}
 
 	return count, nil
+}
+
+// appendUnsuppressedVulnerabilityFilter excludes active broad-scope
+// suppression rules from aggregate vulnerability listings and counts.
+func appendUnsuppressedVulnerabilityFilter(stmt string, opt *fleet.VulnListOptions) (string, []any) {
+	if opt.IncludeDismissed {
+		return stmt, nil
+	}
+	filter := ` AND NOT EXISTS (
+		SELECT 1 FROM vulnerability_suppression_rules vsr
+		WHERE vsr.deleted_at IS NULL AND vsr.expires_at > NOW(6)
+			AND vsr.host_id IS NULL AND vsr.software_name IS NULL AND vsr.os_name IS NULL
+			AND NOT EXISTS (SELECT 1 FROM vulnerability_suppression_rule_labels vsrl WHERE vsrl.rule_id = vsr.id)
+			AND (vsr.cve = vhc.cve OR (vsr.cve_prefix = 1 AND vhc.cve LIKE CONCAT(LEFT(vsr.cve, 9), '%')))`
+	if opt.TeamID == nil {
+		return stmt + filter + ` AND vsr.team_id IS NULL)`, nil
+	}
+	return stmt + filter + ` AND (vsr.team_id IS NULL OR vsr.team_id = ?))`, []any{*opt.TeamID}
 }
 
 func (ds *Datastore) distinctCVEs(ctx context.Context) ([]string, error) {
