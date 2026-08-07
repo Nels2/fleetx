@@ -119,6 +119,7 @@ interface ISoftwarePageProps {
       self_service?: string;
       vulnerable?: string;
       exploit?: string;
+      include_dismissed?: string;
       manage_automations?: string;
       min_cvss_score?: string;
       max_cvss_score?: string;
@@ -168,6 +169,8 @@ const SoftwarePage = ({ children, router, location }: ISoftwarePageProps) => {
   const query = queryParams && queryParams.query ? queryParams.query : "";
   const showExploitedVulnerabilitiesOnly =
     queryParams !== undefined && queryParams.exploit === "true";
+  const showDismissedVulnerabilities =
+    queryParams !== undefined && queryParams.include_dismissed === "true";
 
   // Library uses a self-service toggle (boolean), not the old dropdown filter
   const selfServiceOnly = queryParams?.self_service === "true";
@@ -489,6 +492,7 @@ const SoftwarePage = ({ children, router, location }: ISoftwarePageProps) => {
             platform,
             query,
             showExploitedVulnerabilitiesOnly,
+            showDismissedVulnerabilities,
             selfServiceOnly,
             vulnFilters: softwareVulnFilters,
             onAddFiltersClick: toggleSoftwareFiltersModal,
