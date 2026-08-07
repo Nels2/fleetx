@@ -31,7 +31,10 @@ import { getPathWithQueryParams } from "utilities/url";
 import { getNextLocationPath } from "utilities/helpers";
 
 import generateTableConfig from "./VulnerabilitiesTableConfig";
-import { getExploitedVulnerabilitiesDropdownOptions } from "./helpers";
+import {
+  getDismissedVulnerabilitiesDropdownOptions,
+  getExploitedVulnerabilitiesDropdownOptions,
+} from "./helpers";
 
 const baseClass = "software-vulnerabilities-table";
 
@@ -51,6 +54,7 @@ interface ISoftwareVulnerabilitiesTableProps {
   orderDirection: "asc" | "desc";
   orderKey: string;
   showExploitedVulnerabilitiesOnly: boolean;
+  showDismissedVulnerabilities?: boolean;
   currentPage: number;
   teamId?: number;
   isLoading: boolean;
@@ -66,6 +70,7 @@ const SoftwareVulnerabilitiesTable = ({
   orderDirection,
   orderKey,
   showExploitedVulnerabilitiesOnly,
+  showDismissedVulnerabilities = false,
   currentPage,
   teamId,
   isLoading,
@@ -84,6 +89,8 @@ const SoftwareVulnerabilitiesTable = ({
             return val !== query;
           case "exploit":
             return val !== showExploitedVulnerabilitiesOnly.toString();
+          case "includeDismissed":
+            return val !== showDismissedVulnerabilities.toString();
           default:
             return false;
         }
@@ -96,6 +103,7 @@ const SoftwareVulnerabilitiesTable = ({
       orderKey,
       query,
       showExploitedVulnerabilitiesOnly,
+      showDismissedVulnerabilities,
     ]
   );
 
@@ -104,13 +112,14 @@ const SoftwareVulnerabilitiesTable = ({
       return {
         fleet_id: teamId,
         exploit: showExploitedVulnerabilitiesOnly.toString(),
+        include_dismissed: showDismissedVulnerabilities.toString(),
         query: newTableQuery.searchQuery,
         order_direction: newTableQuery.sortDirection,
         order_key: newTableQuery.sortHeader,
         page: changedParam === "pageIndex" ? newTableQuery.pageIndex : 0,
       };
     },
-    [teamId, showExploitedVulnerabilitiesOnly]
+    [teamId, showDismissedVulnerabilities, showExploitedVulnerabilitiesOnly]
   );
 
   const onQueryChange = useCallback(
@@ -172,7 +181,26 @@ const SoftwareVulnerabilitiesTable = ({
           order_direction: orderDirection,
           order_key: orderKey,
           exploit: isFilterExploited,
+          include_dismissed: showDismissedVulnerabilities.toString(),
           page: 0, // resets page index
+        },
+      })
+    );
+  };
+
+  const handleDismissedVulnFilterDropdownChange = (showDismissed: string) => {
+    router.replace(
+      getNextLocationPath({
+        pathPrefix: PATHS.SOFTWARE_VULNERABILITIES,
+        routeTemplate: "",
+        queryParams: {
+          query,
+          fleet_id: teamId,
+          order_direction: orderDirection,
+          order_key: orderKey,
+          exploit: showExploitedVulnerabilitiesOnly.toString(),
+          include_dismissed: showDismissed,
+          page: 0,
         },
       })
     );
@@ -232,17 +260,29 @@ const SoftwareVulnerabilitiesTable = ({
 
   const renderExploitedVulnerabilitiesDropdown = () => {
     return (
-      <DropdownWrapper
-        name="exploited-vuln-filter"
-        value={showExploitedVulnerabilitiesOnly.toString()}
-        className={`${baseClass}__exploited-vulnerabilities-filter`}
-        options={getExploitedVulnerabilitiesDropdownOptions()}
-        onChange={(newValue: SingleValue<CustomOptionType>) =>
-          newValue && handleExploitedVulnFilterDropdownChange(newValue.value)
-        }
-        variant="table-filter"
-        isDisabled={controlsDisabled}
-      />
+      <>
+        <DropdownWrapper
+          name="exploited-vuln-filter"
+          value={showExploitedVulnerabilitiesOnly.toString()}
+          className={`${baseClass}__exploited-vulnerabilities-filter`}
+          options={getExploitedVulnerabilitiesDropdownOptions()}
+          onChange={(newValue: SingleValue<CustomOptionType>) =>
+            newValue && handleExploitedVulnFilterDropdownChange(newValue.value)
+          }
+          variant="table-filter"
+          isDisabled={controlsDisabled}
+        />
+        <DropdownWrapper
+          name="dismissed-vuln-filter"
+          value={showDismissedVulnerabilities.toString()}
+          options={getDismissedVulnerabilitiesDropdownOptions()}
+          onChange={(newValue: SingleValue<CustomOptionType>) =>
+            newValue && handleDismissedVulnFilterDropdownChange(newValue.value)
+          }
+          variant="table-filter"
+          isDisabled={controlsDisabled}
+        />
+      </>
     );
   };
 
