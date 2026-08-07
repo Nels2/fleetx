@@ -883,6 +883,11 @@ type Service interface {
 	ListOSVersionsByCVE(ctx context.Context, cve string, teamID *uint) (result []*VulnerableOS, updatedAt time.Time, err error)
 	// ListSoftwareByCVE returns a list of software affected by the provided CVE.
 	ListSoftwareByCVE(ctx context.Context, cve string, teamID *uint) (result []*VulnerableSoftware, updatedAt time.Time, err error)
+	CreateVulnerabilitySuppressionRule(ctx context.Context, rule *VulnerabilitySuppressionRule) (*VulnerabilitySuppressionRule, error)
+	VulnerabilitySuppressionRule(ctx context.Context, id uint) (*VulnerabilitySuppressionRule, error)
+	ListVulnerabilitySuppressionRules(ctx context.Context, opt VulnerabilitySuppressionRuleListOptions) ([]*VulnerabilitySuppressionRule, error)
+	SaveVulnerabilitySuppressionRule(ctx context.Context, rule *VulnerabilitySuppressionRule) (*VulnerabilitySuppressionRule, error)
+	DeleteVulnerabilitySuppressionRule(ctx context.Context, id uint) error
 
 	// /////////////////////////////////////////////////////////////////////////////
 	// Team Policies

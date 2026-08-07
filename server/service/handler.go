@@ -473,6 +473,11 @@ func attachFleetAPIRoutes(r *mux.Router, svc fleet.Service, config config.FleetC
 	// Vulnerabilities
 	ue.GET("/api/_version_/fleet/vulnerabilities", listVulnerabilitiesEndpoint, listVulnerabilitiesRequest{})
 	ue.GET("/api/_version_/fleet/vulnerabilities/{cve}", getVulnerabilityEndpoint, getVulnerabilityRequest{})
+	ue.GET("/api/_version_/fleet/vulnerability-suppression-rules", listVulnerabilitySuppressionRulesEndpoint, listVulnerabilitySuppressionRulesRequest{})
+	ue.POST("/api/_version_/fleet/vulnerability-suppression-rules", createVulnerabilitySuppressionRuleEndpoint, createVulnerabilitySuppressionRuleRequest{})
+	ue.GET("/api/_version_/fleet/vulnerability-suppression-rules/{id:[0-9]+}", getVulnerabilitySuppressionRuleEndpoint, getVulnerabilitySuppressionRuleRequest{})
+	ue.PATCH("/api/_version_/fleet/vulnerability-suppression-rules/{id:[0-9]+}", patchVulnerabilitySuppressionRuleEndpoint, patchVulnerabilitySuppressionRuleRequest{})
+	ue.DELETE("/api/_version_/fleet/vulnerability-suppression-rules/{id:[0-9]+}", deleteVulnerabilitySuppressionRuleEndpoint, deleteVulnerabilitySuppressionRuleRequest{})
 
 	// Hosts
 	ue.GET("/api/_version_/fleet/host_summary", getHostSummaryEndpoint, getHostSummaryRequest{})

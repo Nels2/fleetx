@@ -15,6 +15,11 @@ export const getExploitedVulnerabilitiesDropdownOptions = () => {
   ];
 };
 
+export const getDismissedVulnerabilitiesDropdownOptions = () => [
+  { isDisabled: false, label: "Hide dismissed", value: "false" },
+  { isDisabled: false, label: "Show dismissed", value: "true" },
+];
+
 export const isValidCVEFormat = (query: string): boolean => {
   if (query.length < 9) {
     return false;

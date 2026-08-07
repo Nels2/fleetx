@@ -327,6 +327,9 @@ export default {
   VULNERABILITIES: `/${API_VERSION}/fleet/vulnerabilities`,
   VULNERABILITY: (cve: string) =>
     `/${API_VERSION}/fleet/vulnerabilities/${cve}`,
+  VULNERABILITY_SUPPRESSION_RULES: `/${API_VERSION}/fleet/vulnerability-suppression-rules`,
+  VULNERABILITY_SUPPRESSION_RULE: (id: number) =>
+    `/${API_VERSION}/fleet/vulnerability-suppression-rules/${id}`,
 
   // Script endpoints
   HOST_SCRIPTS: (id: number) => `/${API_VERSION}/fleet/hosts/${id}/scripts`,
