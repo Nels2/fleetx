@@ -112,6 +112,7 @@ export default {
     return `${URL_PREFIX}/software/os/${id}`;
   },
   SOFTWARE_VULNERABILITIES: `${URL_PREFIX}/software/vulnerabilities`,
+  SOFTWARE_SUPPRESSION_RULES: `${URL_PREFIX}/software/suppression-rules`,
   SOFTWARE_VULNERABILITY_DETAILS: (cve: string): string => {
     return `${URL_PREFIX}/software/vulnerabilities/${cve}`;
   },

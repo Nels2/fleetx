@@ -237,6 +237,12 @@ const LazySoftwareVulnerabilities = lazyPage(
       /* webpackChunkName: "software" */ "pages/SoftwarePage/SoftwareVulnerabilities"
     )
 );
+const LazyVulnerabilitySuppressionRules = lazyPage(
+  () =>
+    import(
+      /* webpackChunkName: "software" */ "pages/SoftwarePage/VulnerabilitySuppressionRules"
+    )
+);
 const LazySoftwareLibrary = lazyPage(
   () =>
     import(
@@ -732,6 +738,10 @@ const routes = (
               <Route
                 path="vulnerabilities"
                 component={LazySoftwareVulnerabilities}
+              />
+              <Route
+                path="suppression-rules"
+                component={LazyVulnerabilitySuppressionRules}
               />
               <Route path="library" component={LazySoftwareLibrary} />
               {/* Legacy redirect: keeps old /software/:id URLs working */}
