@@ -88,6 +88,7 @@ import SoftwareVersionDetailsPage from "pages/SoftwarePage/SoftwareVersionDetail
 import TeamSettings from "pages/admin/ManageFleetsPage/TeamDetailsWrapper/TeamSettings";
 import SoftwareOSDetailsPage from "pages/SoftwarePage/SoftwareOSDetailsPage";
 import SoftwareVulnerabilityDetailsPage from "pages/SoftwarePage/SoftwareVulnerabilityDetailsPage";
+import VulnerabilitySuppressionRules from "pages/SoftwarePage/VulnerabilitySuppressionRules";
 import SoftwareAddPage from "pages/SoftwarePage/SoftwareAddPage";
 import SoftwareFleetMaintained from "pages/SoftwarePage/SoftwareAddPage/SoftwareFleetMaintained";
 import SoftwareCustomPackage from "pages/SoftwarePage/SoftwareAddPage/SoftwareCustomPackage";
@@ -385,6 +386,10 @@ const routes = (
               <Route
                 path="vulnerabilities"
                 component={SoftwareVulnerabilities}
+              />
+              <Route
+                path="suppression-rules"
+                component={VulnerabilitySuppressionRules}
               />
               <Route path="library" component={SoftwareLibrary} />
               {/* Legacy redirect: keeps old /software/:id URLs working */}

@@ -57,6 +57,10 @@ export const softwareSubNav: ISoftwareSubNavItem[] = [
     name: "Vulnerabilities",
     pathname: PATHS.SOFTWARE_VULNERABILITIES,
   },
+  {
+    name: "Suppression Rules",
+    pathname: PATHS.SOFTWARE_SUPPRESSION_RULES,
+  },
 ];
 
 export const premiumSoftwareSubNav: ISoftwareSubNavItem[] = [
