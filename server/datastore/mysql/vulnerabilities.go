@@ -495,22 +495,46 @@ func (ds *Datastore) CountVulnerabilities(ctx context.Context, opt fleet.VulnLis
 	return count, nil
 }
 
-// appendUnsuppressedVulnerabilityFilter excludes active broad-scope
-// suppression rules from aggregate vulnerability listings and counts.
+// appendUnsuppressedVulnerabilityFilter excludes a CVE only when every
+// concrete affected finding is covered by an active suppression rule.
 func appendUnsuppressedVulnerabilityFilter(stmt string, opt *fleet.VulnListOptions) (string, []any) {
 	if opt.IncludeDismissed {
 		return stmt, nil
 	}
-	filter := ` AND NOT EXISTS (
-		SELECT 1 FROM vulnerability_suppression_rules vsr
-		WHERE vsr.deleted_at IS NULL AND vsr.expires_at > NOW(6)
-			AND vsr.host_id IS NULL AND vsr.software_name IS NULL AND vsr.os_name IS NULL
-			AND NOT EXISTS (SELECT 1 FROM vulnerability_suppression_rule_labels vsrl WHERE vsrl.rule_id = vsr.id)
-			AND (vsr.cve = vhc.cve OR (vsr.cve_prefix = 1 AND vhc.cve LIKE CONCAT(LEFT(vsr.cve, 9), '%')))`
-	if opt.TeamID == nil {
-		return stmt + filter + ` AND vsr.team_id IS NULL)`, nil
+	return stmt + ` AND ` + effectiveVulnerabilityHostCountSQL("vhc.cve", opt) + ` > 0`, nil
+}
+
+func effectiveVulnerabilityHostCountSQL(cveRef string, opt *fleet.VulnListOptions) string {
+	if opt.IncludeDismissed {
+		return "vhc.host_count"
 	}
-	return stmt + filter + ` AND (vsr.team_id IS NULL OR vsr.team_id = ?))`, []any{*opt.TeamID}
+	scope := "h.team_id IS NULL OR h.team_id IS NOT NULL"
+	if opt.TeamID != nil {
+		if *opt.TeamID == 0 {
+			scope = "h.team_id IS NULL"
+		} else {
+			scope = fmt.Sprintf("h.team_id = %d", *opt.TeamID)
+		}
+	}
+	return fmt.Sprintf(`(
+		SELECT COUNT(DISTINCT finding.host_id)
+		FROM (
+			SELECT hs.host_id, 'software' AS finding_kind, s.id AS finding_id
+			FROM host_software hs JOIN software s ON s.id = hs.software_id
+			JOIN software_cve sc ON sc.software_id = s.id WHERE sc.cve = %s
+			UNION ALL
+			SELECT hos.host_id, 'os' AS finding_kind, os.id AS finding_id
+			FROM host_operating_system hos JOIN operating_systems os ON os.id = hos.os_id
+			JOIN operating_system_vulnerabilities osv ON osv.operating_system_id = os.id WHERE osv.cve = %s
+		) finding JOIN hosts h ON h.id = finding.host_id
+		WHERE (%s) AND NOT EXISTS (
+			SELECT 1 FROM vulnerability_suppression_matches vsm
+			JOIN vulnerability_suppression_rules vsr ON vsr.id = vsm.rule_id
+			WHERE vsm.host_id = finding.host_id AND vsm.cve = %s
+			AND vsm.finding_kind = finding.finding_kind AND vsm.finding_id = finding.finding_id
+			AND vsr.deleted_at IS NULL AND vsr.expires_at > NOW(6) AND vsr.state = 'active'
+		)
+	)`, cveRef, cveRef, scope, cveRef)
 }
 
 func (ds *Datastore) distinctCVEs(ctx context.Context) ([]string, error) {
