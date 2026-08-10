@@ -1175,7 +1175,11 @@ func newWorkerIntegrationsSchedule(
 		ChartService: chartSvc,
 		Log:          logger,
 	}
-	w.Register(jira, zendesk, macosSetupAsst, dbMigrate, vppVerify, softwareWorker, chartScrubGlobal, chartScrubFleet)
+	vulnerabilitySuppression := &worker.VulnerabilitySuppression{
+		Datastore: ds,
+		Log:       logger,
+	}
+	w.Register(jira, zendesk, macosSetupAsst, dbMigrate, vppVerify, softwareWorker, chartScrubGlobal, chartScrubFleet, vulnerabilitySuppression)
 
 	// Read app config a first time before starting, to clear up any failer client
 	// configuration if we're not on a fleet-owned server. Technically, the ServerURL
@@ -1210,6 +1214,9 @@ func newWorkerIntegrationsSchedule(
 			workCtx, cancel := context.WithTimeout(ctx, maxRunTime)
 			defer cancel()
 
+			if err := worker.QueuePendingVulnerabilitySuppressionJobs(workCtx, ds, logger); err != nil {
+				return fmt.Errorf("queueing pending vulnerability suppression jobs: %w", err)
+			}
 			if err := w.ProcessJobs(workCtx); err != nil {
 				return fmt.Errorf("processing integrations jobs: %w", err)
 			}
