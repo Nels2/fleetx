@@ -398,6 +398,10 @@ type SaveVulnerabilitySuppressionRuleFunc func(ctx context.Context, rule *fleet.
 
 type DeleteVulnerabilitySuppressionRuleFunc func(ctx context.Context, id uint, actorID uint) error
 
+type RebuildVulnerabilitySuppressionMatchesFunc func(ctx context.Context, ruleID uint) error
+
+type ListPendingVulnerabilitySuppressionRuleIDsFunc func(ctx context.Context) ([]uint, error)
+
 type OSVersionFunc func(ctx context.Context, osVersionID uint, teamFilter *fleet.TeamFilter) (*fleet.OSVersion, *time.Time, error)
 
 type UpdateOSVersionsFunc func(ctx context.Context) error
@@ -2875,6 +2879,12 @@ type DataStore struct {
 
 	DeleteVulnerabilitySuppressionRuleFunc        DeleteVulnerabilitySuppressionRuleFunc
 	DeleteVulnerabilitySuppressionRuleFuncInvoked bool
+
+	RebuildVulnerabilitySuppressionMatchesFunc        RebuildVulnerabilitySuppressionMatchesFunc
+	RebuildVulnerabilitySuppressionMatchesFuncInvoked bool
+
+	ListPendingVulnerabilitySuppressionRuleIDsFunc        ListPendingVulnerabilitySuppressionRuleIDsFunc
+	ListPendingVulnerabilitySuppressionRuleIDsFuncInvoked bool
 
 	OSVersionFunc        OSVersionFunc
 	OSVersionFuncInvoked bool
@@ -7060,6 +7070,20 @@ func (s *DataStore) DeleteVulnerabilitySuppressionRule(ctx context.Context, id u
 	s.DeleteVulnerabilitySuppressionRuleFuncInvoked = true
 	s.mu.Unlock()
 	return s.DeleteVulnerabilitySuppressionRuleFunc(ctx, id, actorID)
+}
+
+func (s *DataStore) RebuildVulnerabilitySuppressionMatches(ctx context.Context, ruleID uint) error {
+	s.mu.Lock()
+	s.RebuildVulnerabilitySuppressionMatchesFuncInvoked = true
+	s.mu.Unlock()
+	return s.RebuildVulnerabilitySuppressionMatchesFunc(ctx, ruleID)
+}
+
+func (s *DataStore) ListPendingVulnerabilitySuppressionRuleIDs(ctx context.Context) ([]uint, error) {
+	s.mu.Lock()
+	s.ListPendingVulnerabilitySuppressionRuleIDsFuncInvoked = true
+	s.mu.Unlock()
+	return s.ListPendingVulnerabilitySuppressionRuleIDsFunc(ctx)
 }
 
 func (s *DataStore) OSVersion(ctx context.Context, osVersionID uint, teamFilter *fleet.TeamFilter) (*fleet.OSVersion, *time.Time, error) {
