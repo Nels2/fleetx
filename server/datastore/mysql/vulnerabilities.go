@@ -321,7 +321,7 @@ func buildListVulnerabilitiesSQL(opt *fleet.VulnListOptions) (string, []any, err
 	inner.WriteString(`
 		SELECT
 			vhc.cve,
-			vhc.host_count AS hosts_count,
+			` + effectiveVulnerabilityHostCountSQL("vhc.cve", opt) + ` AS hosts_count,
 			vhc.updated_at AS hosts_count_updated_at`)
 	if cmOrderKey {
 		inner.WriteString(`,
@@ -337,7 +337,7 @@ func buildListVulnerabilitiesSQL(opt *fleet.VulnListOptions) (string, []any, err
 		LEFT JOIN cve_meta cm ON cm.cve = vhc.cve`)
 	}
 	inner.WriteString(`
-		WHERE vhc.host_count > 0
+		WHERE ` + effectiveVulnerabilityHostCountSQL("vhc.cve", opt) + ` > 0
 		AND (
 			EXISTS (SELECT 1 FROM software_cve WHERE cve = vhc.cve)
 			OR EXISTS (SELECT 1 FROM operating_system_vulnerabilities WHERE cve = vhc.cve)
@@ -450,7 +450,7 @@ func buildListVulnerabilitiesLegacySQL(opt *fleet.VulnListOptions) (string, []an
 			cm.cisa_known_exploit,
 			cm.published as cve_published,
 			cm.description,
-			vhc.host_count as hosts_count,
+			` + effectiveVulnerabilityHostCountSQL("vhc.cve", opt) + ` as hosts_count,
 			vhc.updated_at as hosts_count_updated_at
 		FROM vulnerability_host_counts vhc
 		LEFT JOIN cve_meta cm ON cm.cve = vhc.cve
@@ -472,7 +472,7 @@ func buildListVulnerabilitiesLegacySQL(opt *fleet.VulnListOptions) (string, []an
 				(SELECT source FROM software_cve WHERE cve = vhc.cve LIMIT 1),
 				(SELECT source FROM operating_system_vulnerabilities WHERE cve = vhc.cve LIMIT 1)
 			) as source,
-			vhc.host_count as hosts_count,
+			` + effectiveVulnerabilityHostCountSQL("vhc.cve", opt) + ` as hosts_count,
 			vhc.updated_at as hosts_count_updated_at
 		FROM vulnerability_host_counts vhc
 		WHERE vhc.host_count > 0
@@ -526,7 +526,7 @@ func (ds *Datastore) CountVulnerabilities(ctx context.Context, opt fleet.VulnLis
 		selectStmt += `LEFT JOIN cve_meta cm ON cm.cve = vhc.cve
 		`
 	}
-	selectStmt += `WHERE vhc.host_count > 0
+	selectStmt += `WHERE ` + effectiveVulnerabilityHostCountSQL("vhc.cve", &opt) + ` > 0
 		AND (
 			EXISTS (SELECT 1 FROM software_cve WHERE cve = vhc.cve)
 			OR EXISTS (SELECT 1 FROM operating_system_vulnerabilities WHERE cve = vhc.cve)
@@ -556,24 +556,57 @@ func (ds *Datastore) CountVulnerabilities(ctx context.Context, opt fleet.VulnLis
 	return count, nil
 }
 
-// appendUnsuppressedVulnerabilityFilter filters rules that can safely be
-// evaluated at aggregate-CVE level. Component, label and host selectors are
-// represented by the match projection and must not suppress another component
-// that still affects the host.
+// appendUnsuppressedVulnerabilityFilter now uses the match projection instead
+// of trying to infer applicability from rule fields. A CVE remains visible
+// whenever at least one concrete vulnerable component is still active.
 func appendUnsuppressedVulnerabilityFilter(stmt string, opt *fleet.VulnListOptions) (string, []any) {
 	if opt.IncludeDismissed {
 		return stmt, nil
 	}
-	filter := ` AND NOT EXISTS (
-		SELECT 1 FROM vulnerability_suppression_rules vsr
-		WHERE vsr.deleted_at IS NULL AND vsr.expires_at > NOW(6)
-			AND vsr.host_id IS NULL AND vsr.software_name IS NULL AND vsr.os_name IS NULL
-			AND NOT EXISTS (SELECT 1 FROM vulnerability_suppression_rule_labels vsrl WHERE vsrl.rule_id = vsr.id)
-			AND (vsr.cve = vhc.cve OR (vsr.cve_prefix = 1 AND vhc.cve LIKE CONCAT(LEFT(vsr.cve, 9), '%')))`
-	if opt.TeamID == nil {
-		return stmt + filter + ` AND vsr.team_id IS NULL)`, nil
+	return stmt + ` AND ` + effectiveVulnerabilityHostCountSQL("vhc.cve", opt) + ` > 0`, nil
+}
+
+// effectiveVulnerabilityHostCountSQL counts only host/CVE pairs with an
+// unsuppressed concrete software or OS finding. It deliberately reads the raw
+// tables; vulnerability_host_counts stays an untouched raw snapshot used by
+// automations and by include_dismissed=true.
+func effectiveVulnerabilityHostCountSQL(cveRef string, opt *fleet.VulnListOptions) string {
+	if opt.IncludeDismissed {
+		return "vhc.host_count"
 	}
-	return stmt + filter + ` AND (vsr.team_id IS NULL OR vsr.team_id = ?))`, []any{*opt.TeamID}
+	scope := "h.team_id IS NULL OR h.team_id IS NOT NULL"
+	if opt.TeamID != nil {
+		if *opt.TeamID == 0 {
+			scope = "h.team_id IS NULL"
+		} else {
+			scope = fmt.Sprintf("h.team_id = %d", *opt.TeamID)
+		}
+	}
+	return fmt.Sprintf(`(
+		SELECT COUNT(DISTINCT finding.host_id)
+		FROM (
+			SELECT hs.host_id, 'software' AS finding_kind, s.id AS finding_id
+			FROM host_software hs
+			JOIN software s ON s.id = hs.software_id
+			JOIN software_cve sc ON sc.software_id = s.id
+			WHERE sc.cve = %s
+			UNION ALL
+			SELECT hos.host_id, 'os' AS finding_kind, os.id AS finding_id
+			FROM host_operating_system hos
+			JOIN operating_systems os ON os.id = hos.os_id
+			JOIN operating_system_vulnerabilities osv ON osv.operating_system_id = os.id
+			WHERE osv.cve = %s
+		) finding
+		JOIN hosts h ON h.id = finding.host_id
+		WHERE (%s)
+		AND NOT EXISTS (
+			SELECT 1 FROM vulnerability_suppression_matches vsm
+			JOIN vulnerability_suppression_rules vsr ON vsr.id = vsm.rule_id
+			WHERE vsm.host_id = finding.host_id AND vsm.cve = %s
+			AND vsm.finding_kind = finding.finding_kind AND vsm.finding_id = finding.finding_id
+			AND vsr.deleted_at IS NULL AND vsr.expires_at > NOW(6) AND vsr.state = 'active'
+		)
+	)`, cveRef, cveRef, scope, cveRef)
 }
 
 func (ds *Datastore) distinctCVEs(ctx context.Context) ([]string, error) {
