@@ -98,6 +98,9 @@ func (svc *Service) ListVulnerabilities(ctx context.Context, opt fleet.VulnListO
 	if !opt.HasValidSortColumn() {
 		return nil, nil, badRequest("invalid order key")
 	}
+	if err := svc.refreshVulnerabilitySuppressionMatches(ctx); err != nil {
+		return nil, nil, err
+	}
 
 	vulns, meta, err := svc.ds.ListVulnerabilities(ctx, opt)
 	if err != nil {
@@ -118,6 +121,9 @@ func (svc *Service) CountVulnerabilities(ctx context.Context, opts fleet.VulnLis
 		return 0, err
 	}
 
+	if err := svc.refreshVulnerabilitySuppressionMatches(ctx); err != nil {
+		return 0, err
+	}
 	return svc.ds.CountVulnerabilities(ctx, opts)
 }
 
