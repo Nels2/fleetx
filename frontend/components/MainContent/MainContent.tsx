@@ -36,6 +36,7 @@ const MainContent = ({
 }: IMainContentProps): JSX.Element => {
   const classes = classnames(baseClass, className);
   const {
+    config,
     isPremiumTier,
     isAndroidEnterpriseDeleted,
     isApplePnsExpired,
