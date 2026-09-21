@@ -123,6 +123,7 @@ const SoftwareVulnerabilities = ({
         scope: "softwareVulnByCVE",
         vulnerability: (query && stripQuotes(query)) || "",
         teamId,
+        include_dismissed: showDismissedVulnerabilities,
       },
     ],
     ({ queryKey }) => {
@@ -237,7 +238,7 @@ const SoftwareVulnerabilities = ({
     if (isExactMatchQuery) {
       refetchExactMatch();
     }
-  }, [queryParams.exploit, isExactMatchQuery]);
+  }, [queryParams.exploit, queryParams.include_dismissed, isExactMatchQuery]);
 
   // !tableData is used to show the Spinner only on the first render.
   // This prevents the Spinner from flashing on every data refresh, noticable
