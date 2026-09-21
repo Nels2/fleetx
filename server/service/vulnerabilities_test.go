@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"net/http"
 	"testing"
 	"time"
 
@@ -50,6 +51,25 @@ func TestListVulnerabilities(t *testing.T) {
 		_, _, err = svc.ListVulnerabilities(ctx, opts)
 		require.NoError(t, err)
 	})
+}
+
+func TestGetVulnerabilityEndpointHidesDismissedVulnerability(t *testing.T) {
+	ds := new(mock.Store)
+	svc, ctx := newTestService(t, ds, nil, nil)
+	ctx = viewer.NewContext(ctx, viewer.Viewer{User: &fleet.User{GlobalRole: ptr.String(fleet.RoleAdmin)}})
+
+	ds.VulnerabilityFunc = func(context.Context, string, *uint, bool) (*fleet.VulnerabilityWithMetadata, error) {
+		return &fleet.VulnerabilityWithMetadata{CVE: fleet.CVE{CVE: "CVE-2026-1234"}, HostsCount: 7}, nil
+	}
+	ds.CountVulnerabilitiesFunc = func(_ context.Context, opt fleet.VulnListOptions) (uint, error) {
+		require.Equal(t, "CVE-2026-1234", opt.ListOptions.MatchQuery)
+		require.False(t, opt.IncludeDismissed)
+		return 0, nil
+	}
+
+	response, err := getVulnerabilityEndpoint(ctx, &getVulnerabilityRequest{CVE: "CVE-2026-1234"}, svc)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusNoContent, response.(getVulnerabilityResponse).Status())
 }
 
 func TestVulnerabilitesAuth(t *testing.T) {
