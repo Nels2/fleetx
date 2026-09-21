@@ -125,8 +125,9 @@ func (svc *Service) IsCVEKnownToFleet(ctx context.Context, cve string) (bool, er
 }
 
 type getVulnerabilityRequest struct {
-	CVE    string `url:"cve"`
-	TeamID *uint  `query:"team_id,optional" renameto:"fleet_id"`
+	CVE              string `url:"cve"`
+	TeamID           *uint  `query:"team_id,optional" renameto:"fleet_id"`
+	IncludeDismissed bool   `query:"include_dismissed,optional"`
 }
 
 type getVulnerabilityResponse struct {
@@ -156,6 +157,19 @@ func getVulnerabilityEndpoint(ctx context.Context, req interface{}, svc fleet.Se
 	if vuln == nil && known {
 		// Return 204 status code if the vulnerability is known to Fleet but does not match any host software/OS
 		return getVulnerabilityResponse{statusCode: http.StatusNoContent}, nil
+	}
+	if !request.IncludeDismissed {
+		count, err := svc.CountVulnerabilities(ctx, fleet.VulnListOptions{
+			ListOptions: fleet.ListOptions{MatchQuery: request.CVE},
+			TeamID:      request.TeamID,
+		})
+		if err != nil {
+			return getVulnerabilityResponse{Err: err}, nil
+		}
+		if count == 0 {
+			return getVulnerabilityResponse{statusCode: http.StatusNoContent}, nil
+		}
+		vuln.HostsCount = count
 	}
 
 	vuln.DetailsLink = fmt.Sprintf("https://nvd.nist.gov/vuln/detail/%s", vuln.CVE.CVE)
