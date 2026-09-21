@@ -26,6 +26,7 @@ export interface IGetVulnerabilitiesQueryKey
 interface IGetVulnerabilityOptions {
   vulnerability: string;
   teamId?: number;
+  include_dismissed?: boolean;
 }
 
 export interface IGetVulnerabilityQueryKey extends IGetVulnerabilityOptions {
@@ -80,11 +81,14 @@ export const getVulnerabilities = ({
 const getVulnerability = ({
   vulnerability,
   teamId,
+  include_dismissed,
 }: IGetVulnerabilityOptions): Promise<IVulnerabilityResponse> => {
   const endpoint = endpoints.VULNERABILITY(vulnerability);
-  const queryString = buildQueryStringFromParams({ fleet_id: teamId });
-  const path =
-    typeof teamId === "undefined" ? endpoint : `${endpoint}?${queryString}`;
+  const queryString = buildQueryStringFromParams({
+    fleet_id: teamId,
+    include_dismissed,
+  });
+  const path = queryString ? `${endpoint}?${queryString}` : endpoint;
 
   return sendRequest("GET", path);
 };
