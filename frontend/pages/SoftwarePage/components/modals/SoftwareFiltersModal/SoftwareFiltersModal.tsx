@@ -1,9 +1,9 @@
 import React, { useRef, useState } from "react";
 
-import Modal from "components/Modal";
 import Button from "components/buttons/Button";
-import Slider from "components/forms/fields/Slider";
 import Checkbox from "components/forms/fields/Checkbox";
+import Slider from "components/forms/fields/Slider";
+import Modal from "components/Modal";
 import SeverityFilter, {
   ISeverityFieldErrors,
   ISeverityFilterValue,
@@ -13,14 +13,18 @@ import SeverityFilter, {
   SeverityValue,
   validateSeverityScores,
 } from "components/SeverityFilter";
-import { ISoftwareVulnFiltersParams } from "pages/SoftwarePage/SoftwareInventory/SoftwareInventoryTable/helpers";
+import { ISoftwareType } from "interfaces/software";
+import { ISoftwareFilters } from "pages/SoftwarePage/SoftwareInventory/SoftwareInventoryTable/helpers";
+
+import SoftwareTypesPicker from "./SoftwareTypesPicker";
 
 const baseClass = "software-filters-modal";
 
 interface ISoftwareFiltersModalProps {
   onExit: () => void;
-  onSubmit: (vulnFilters: ISoftwareVulnFiltersParams) => void;
-  vulnFilters: ISoftwareVulnFiltersParams;
+  onSubmit: (filters: ISoftwareFilters) => void;
+  vulnFilters: ISoftwareFilters;
+  availableTypes?: readonly ISoftwareType[];
 }
 
 type IFormData = {
@@ -32,7 +36,9 @@ const SoftwareFiltersModal = ({
   onExit,
   onSubmit,
   vulnFilters,
+  availableTypes,
 }: ISoftwareFiltersModalProps) => {
+  const [selectedTypes, setSelectedTypes] = useState(vulnFilters.types ?? []);
   const [vulnSoftwareFilterEnabled, setVulnSoftwareFilterEnabled] = useState(
     vulnFilters.vulnerable || false
   );
@@ -105,12 +111,20 @@ const SoftwareFiltersModal = ({
       exploit: hasKnownExploit || undefined,
       minCvssScore: min,
       maxCvssScore: max,
+      ...(availableTypes && { types: selectedTypes }),
     });
   };
 
   const renderModalContent = () => {
     return (
       <form onSubmit={handleSubmit}>
+        {availableTypes && (
+          <SoftwareTypesPicker
+            availableTypes={availableTypes}
+            selectedKeys={selectedTypes}
+            onChange={setSelectedTypes}
+          />
+        )}
         <Slider
           value={vulnSoftwareFilterEnabled}
           onChange={onToggleVulnSoftware}
@@ -118,28 +132,28 @@ const SoftwareFiltersModal = ({
           activeText="Vulnerable software"
         />
         <>
-            <SeverityFilter
-              severity={severity}
-              minScore={formData.minScore}
-              maxScore={formData.maxScore}
-              onChange={onChangeSeverity}
-              disabled={!vulnSoftwareFilterEnabled}
-              errors={formErrors}
-              onScoreBlur={onScoreBlur}
-              onScoreFocus={onScoreFocus}
-            />
-            <Checkbox
-              onChange={({ value }: { value: boolean }) =>
-                setHasKnownExploit(value)
-              }
-              name="hasKnownExploit"
-              value={hasKnownExploit}
-              parseTarget
-              helpText="Software has vulnerabilities that have been actively exploited in the wild."
-              disabled={!vulnSoftwareFilterEnabled}
-            >
-              Has known exploit
-            </Checkbox>
+          <SeverityFilter
+            severity={severity}
+            minScore={formData.minScore}
+            maxScore={formData.maxScore}
+            onChange={onChangeSeverity}
+            disabled={!vulnSoftwareFilterEnabled}
+            errors={formErrors}
+            onScoreBlur={onScoreBlur}
+            onScoreFocus={onScoreFocus}
+          />
+          <Checkbox
+            onChange={({ value }: { value: boolean }) =>
+              setHasKnownExploit(value)
+            }
+            name="hasKnownExploit"
+            value={hasKnownExploit}
+            parseTarget
+            helpText="Software has vulnerabilities that have been actively exploited in the wild."
+            disabled={!vulnSoftwareFilterEnabled}
+          >
+            Has known exploit
+          </Checkbox>
         </>
         <div className="modal-cta-wrap">
           <Button type="submit">Apply</Button>

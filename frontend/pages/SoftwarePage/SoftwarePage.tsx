@@ -1,43 +1,43 @@
 import React, { useCallback, useContext, useEffect, useState } from "react";
-import { InjectedRouter } from "react-router";
 import { useQuery } from "react-query";
+import { InjectedRouter } from "react-router";
 import { Tab, TabList, Tabs } from "react-tabs";
 
-import PATHS from "router/paths";
-import { IConfig } from "interfaces/config";
-import { IJiraIntegration, IZendeskIntegration } from "interfaces/integration";
-import { APP_CONTEXT_ALL_TEAMS_ID, ITeamConfig } from "interfaces/team";
-import { SelectedPlatform } from "interfaces/platform";
-import { IWebhookSoftwareVulnerabilities } from "interfaces/webhook";
-import configAPI from "services/entities/config";
-import teamsAPI, { ILoadTeamResponse } from "services/entities/teams";
-import { ISoftwareApiParams } from "services/entities/software";
+import AutomationsButton from "components/buttons/AutomationsButton";
+import Button from "components/buttons/Button";
+import MainContent from "components/MainContent";
+import PageDescription from "components/PageDescription";
+import TabNav from "components/TabNav";
+import TabText from "components/TabText";
+import TeamsHeader from "components/TeamsHeader";
+import { notify } from "components/ToastNotification";
+import TooltipWrapper from "components/TooltipWrapper";
 import { AppContext } from "context/app";
 import useTeamIdParam from "hooks/useTeamIdParam";
+import { IConfig } from "interfaces/config";
+import { IJiraIntegration, IZendeskIntegration } from "interfaces/integration";
+import { SelectedPlatform } from "interfaces/platform";
+import { SOFTWARE_TYPES } from "interfaces/software";
+import { APP_CONTEXT_ALL_TEAMS_ID, ITeamConfig } from "interfaces/team";
+import { IWebhookSoftwareVulnerabilities } from "interfaces/webhook";
+import PATHS from "router/paths";
+import configAPI from "services/entities/config";
+import teamsAPI, { ILoadTeamResponse } from "services/entities/teams";
+import { getNextLocationPath } from "utilities/helpers";
 import {
   convertParamsToSnakeCase,
   getPathWithQueryParams,
 } from "utilities/url";
-import { getNextLocationPath } from "utilities/helpers";
 
-import { notify } from "components/ToastNotification";
-import Button from "components/buttons/Button";
-import AutomationsButton from "components/buttons/AutomationsButton";
-import MainContent from "components/MainContent";
-import TeamsHeader from "components/TeamsHeader";
-import TooltipWrapper from "components/TooltipWrapper";
-import TabNav from "components/TabNav";
-import TabText from "components/TabText";
-import PageDescription from "components/PageDescription";
-
-import ManageAutomationsModal from "./components/modals/ManageSoftwareAutomationsModal";
 import AddSoftwareModal from "./components/modals/AddSoftwareModal";
+import ManageAutomationsModal from "./components/modals/ManageSoftwareAutomationsModal";
+import SoftwareFiltersModal from "./components/modals/SoftwareFiltersModal";
 import {
-  buildSoftwareVulnFiltersQueryParams,
+  buildSoftwareFiltersQueryParams,
+  getSoftwareFiltersFromQueryParams,
   getSoftwareVulnFiltersFromQueryParams,
   ISoftwareVulnFiltersParams,
 } from "./SoftwareInventory/SoftwareInventoryTable/helpers";
-import SoftwareFiltersModal from "./components/modals/SoftwareFiltersModal";
 
 interface ISoftwareSubNavItem {
   name: string;
@@ -87,6 +87,20 @@ export const getTabIndex = (
   });
 };
 
+export const getOSTabSortHeader = (
+  pathname: string,
+  platform: SelectedPlatform,
+  orderKey?: string
+): string => {
+  if (pathname.startsWith(PATHS.SOFTWARE_OS) && platform === "all") {
+    return "hosts_count";
+  }
+  if (orderKey) {
+    return orderKey;
+  }
+  return pathname.startsWith(PATHS.SOFTWARE_OS) ? "version" : "hosts_count";
+};
+
 // default values for query params used on this page if not provided
 const DEFAULT_SORT_DIRECTION = "desc";
 const DEFAULT_SORT_HEADER = "hosts_count";
@@ -132,6 +146,7 @@ interface ISoftwarePageProps {
       order_key?: string;
       order_direction?: "asc" | "desc";
       platform?: SelectedPlatform;
+      types?: string;
     };
     hash?: string;
   };
@@ -157,9 +172,11 @@ const SoftwarePage = ({ children, router, location }: ISoftwarePageProps) => {
 
   // initial values for query params used on this page
   const sortHeader =
-    queryParams && queryParams.order_key
-      ? queryParams.order_key
-      : DEFAULT_SORT_HEADER;
+    getOSTabSortHeader(
+      location.pathname,
+      queryParams?.platform || "all",
+      queryParams?.order_key
+    ) || DEFAULT_SORT_HEADER;
   const sortDirection =
     queryParams?.order_direction === undefined
       ? DEFAULT_SORT_DIRECTION
@@ -182,6 +199,7 @@ const SoftwarePage = ({ children, router, location }: ISoftwarePageProps) => {
   const softwareVulnFilters = getSoftwareVulnFiltersFromQueryParams(
     queryParams
   );
+  const softwareFilters = getSoftwareFiltersFromQueryParams(queryParams);
 
   const [showManageAutomationsModal, setShowManageAutomationsModal] = useState(
     false
@@ -342,14 +360,16 @@ const SoftwarePage = ({ children, router, location }: ISoftwarePageProps) => {
     router,
   ]);
 
-  const onApplyVulnFilters = (vulnFilters: ISoftwareVulnFiltersParams) => {
-    const newQueryParams: ISoftwareApiParams = {
+  const onApplyVulnFilters = (
+    vulnFilters: ISoftwareVulnFiltersParams & { types?: string[] }
+  ) => {
+    const newQueryParams = {
       query,
       teamId: currentTeamId,
       orderDirection: sortDirection,
       orderKey: sortHeader,
       page: 0, // resets page index
-      ...buildSoftwareVulnFiltersQueryParams(vulnFilters),
+      ...buildSoftwareFiltersQueryParams(vulnFilters),
     };
 
     router.replace(
@@ -554,7 +574,15 @@ const SoftwarePage = ({ children, router, location }: ISoftwarePageProps) => {
           <SoftwareFiltersModal
             onExit={toggleSoftwareFiltersModal}
             onSubmit={onApplyVulnFilters}
-            vulnFilters={softwareVulnFilters}
+            vulnFilters={{
+              ...softwareVulnFilters,
+              types: softwareFilters.types,
+            }}
+            availableTypes={
+              location.pathname.startsWith(PATHS.SOFTWARE_INVENTORY)
+                ? SOFTWARE_TYPES
+                : undefined
+            }
           />
         )}
       </>

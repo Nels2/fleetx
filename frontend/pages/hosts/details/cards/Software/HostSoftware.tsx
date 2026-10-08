@@ -1,46 +1,58 @@
-import React, { useCallback, useContext, useMemo, useState } from "react";
-import { InjectedRouter } from "react-router";
-import { useQuery } from "react-query";
 import { AxiosError } from "axios";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useQuery } from "react-query";
+import { InjectedRouter } from "react-router";
 
-import hostAPI, {
-  IGetHostSoftwareResponse,
-  IHostSoftwareQueryKey,
-} from "services/entities/hosts";
-import deviceAPI, {
-  IDeviceSoftwareQueryKey,
-  IGetDeviceSoftwareResponse,
-} from "services/entities/device_user";
-import { IHostSoftware, ISoftware } from "interfaces/software";
+import CardHeader from "components/CardHeader";
+import DataError from "components/DataError";
+import DeviceUserError from "components/DeviceUserError";
+import Spinner from "components/Spinner";
+import { AppContext } from "context/app";
+import { MdmEnrollmentStatus } from "interfaces/mdm";
 import {
   HostPlatform,
   isAndroid,
   isIPadOrIPhone,
   isMacOS,
 } from "interfaces/platform";
-import { MdmEnrollmentStatus } from "interfaces/mdm";
-
-import { DEFAULT_USE_QUERY_OPTIONS } from "utilities/constants";
-import { getNextLocationPath } from "utilities/helpers";
-import { convertParamsToSnakeCase } from "utilities/url";
-
-import { AppContext } from "context/app";
-
-import CardHeader from "components/CardHeader";
-import DataError from "components/DataError";
-import DeviceUserError from "components/DeviceUserError";
-import Spinner from "components/Spinner";
-import SoftwareFiltersModal from "pages/SoftwarePage/components/modals/SoftwareFiltersModal";
-
 import {
-  buildSoftwareVulnFiltersQueryParams,
+  getSoftwareTypesForPlatform,
+  IHostSoftware,
+  ISoftware,
+  MACOS_APP_SOFTWARE_TYPE,
+  parseSoftwareTypesParam,
+  softwareTypesToApiParams,
+} from "interfaces/software";
+import SoftwareFiltersModal from "pages/SoftwarePage/components/modals/SoftwareFiltersModal";
+import {
   getSoftwareVulnFiltersFromQueryParams,
-  ISoftwareVulnFiltersParams,
+  ISoftwareFilters,
 } from "pages/SoftwarePage/SoftwareInventory/SoftwareInventoryTable/helpers";
-import { generateSoftwareTableHeaders as generateHostSoftwareTableConfig } from "./HostSoftwareTableConfig";
+import deviceAPI, {
+  IDeviceSoftwareQueryKey,
+  IGetDeviceSoftwareResponse,
+} from "services/entities/device_user";
+import hostAPI, {
+  IGetHostSoftwareResponse,
+  IHostSoftwareQueryKey,
+} from "services/entities/hosts";
+import { DEFAULT_USE_QUERY_OPTIONS } from "utilities/constants";
+
 import { generateSoftwareTableHeaders as generateDeviceSoftwareTableConfig } from "./DeviceSoftwareTableConfig";
+import {
+  CLEARED_SOFTWARE_TYPES_PARAM,
+  getHostSoftwareLocationPath,
+  getSoftwareSubheader,
+} from "./helpers";
 import HostSoftwareTable from "./HostSoftwareTable";
-import { getSoftwareSubheader } from "./helpers";
+import { generateSoftwareTableHeaders as generateHostSoftwareTableConfig } from "./HostSoftwareTableConfig";
 
 const baseClass = "host-software-section";
 
@@ -95,6 +107,7 @@ export const parseHostSoftwareQueryParams = (queryParams: {
   category_id?: string;
   fleet_id?: string;
   macos_applications?: string;
+  types?: string;
 }) => {
   const searchQuery = queryParams?.query ?? DEFAULT_SEARCH_QUERY;
   const sortHeader = queryParams?.order_key ?? DEFAULT_SORT_HEADER;
@@ -106,6 +119,7 @@ export const parseHostSoftwareQueryParams = (queryParams: {
   const softwareVulnFilters = getSoftwareVulnFiltersFromQueryParams(
     queryParams
   );
+  const types = parseSoftwareTypesParam(queryParams.types);
   const categoryId = queryParams?.category_id
     ? parseInt(queryParams.category_id, 10)
     : undefined;
@@ -137,6 +151,8 @@ export const parseHostSoftwareQueryParams = (queryParams: {
     category_id: categoryId,
     fleet_id: teamId,
     macos_applications: macosApplications,
+    types,
+    typesParam: queryParams.types,
   };
 };
 
@@ -166,15 +182,103 @@ const HostSoftware = ({
   // (only top-level applications) when the host is macOS and no explicit value
   // is set in the URL. It is left undefined for other platforms, so the param
   // is neither sent to the API nor appended to the URL on pagination.
-  const macosApplicationsFilter = isMacOS(platform)
-    ? queryParams.macos_applications ?? true
-    : undefined;
+  const availableTypes = getSoftwareTypesForPlatform(platform, {
+    hostPage: true,
+  }).map((type) => type.key);
+  const requestedTypes = queryParams.types;
+  const supportedRequestedTypes = (requestedTypes ?? []).filter((type) =>
+    availableTypes.includes(type)
+  );
+  const selectedTypes =
+    requestedTypes === undefined ||
+    (isMacOS(platform) &&
+      supportedRequestedTypes.length === 0 &&
+      queryParams.typesParam !== CLEARED_SOFTWARE_TYPES_PARAM)
+      ? isMacOS(platform)
+        ? [MACOS_APP_SOFTWARE_TYPE]
+        : []
+      : supportedRequestedTypes;
+  const macosApplicationsFilter =
+    isMacOS(platform) && selectedTypes.includes(MACOS_APP_SOFTWARE_TYPE)
+      ? queryParams.macos_applications ?? true
+      : undefined;
+  const softwareFilters = {
+    ...getSoftwareVulnFiltersFromQueryParams({
+      vulnerable: queryParams.vulnerable,
+      exploit: queryParams.exploit,
+      min_cvss_score: queryParams.min_cvss_score?.toString(),
+      max_cvss_score: queryParams.max_cvss_score?.toString(),
+    }),
+    types: selectedTypes,
+  };
+  const normalizedTypesParam =
+    selectedTypes.length > 0
+      ? [...selectedTypes].sort().join(",")
+      : isMacOS(platform) && queryParams.typesParam !== undefined
+      ? CLEARED_SOFTWARE_TYPES_PARAM
+      : undefined;
+  const needsTypesNormalization =
+    normalizedTypesParam !== queryParams.typesParam &&
+    !(
+      normalizedTypesParam === undefined && queryParams.typesParam === undefined
+    );
+  const shouldNormalizeTypes =
+    (isMacOS(platform) && queryParams.typesParam === undefined) ||
+    needsTypesNormalization;
+  const lastNormalizedTypesKey = useRef("");
+  const typesNormalizationKey = `${platform}:${
+    queryParams.typesParam ?? "<missing>"
+  }`;
+
+  useEffect(() => {
+    if (
+      !shouldNormalizeTypes ||
+      lastNormalizedTypesKey.current === typesNormalizationKey
+    ) {
+      return;
+    }
+    lastNormalizedTypesKey.current = typesNormalizationKey;
+    router.replace(
+      getHostSoftwareLocationPath({
+        pathname,
+        platform,
+        query: queryParams.query,
+        orderKey: queryParams.order_key,
+        orderDirection: queryParams.order_direction,
+        page: queryParams.page,
+        fleetId: queryParams.fleet_id,
+        macosApplications: macosApplicationsFilter,
+        filters: softwareFilters,
+      })
+    );
+  }, [
+    macosApplicationsFilter,
+    pathname,
+    platform,
+    queryParams.fleet_id,
+    queryParams.macos_applications,
+    queryParams.order_direction,
+    queryParams.order_key,
+    queryParams.page,
+    queryParams.query,
+    router,
+    shouldNormalizeTypes,
+    softwareFilters,
+    typesNormalizationKey,
+  ]);
 
   const isUnsupported = isIPadOrIPhone(platform) && queryParams.vulnerable; // no Android software and no vulnerable software for iOS
 
   const [showSoftwareFiltersModal, setShowSoftwareFiltersModal] = useState(
     false
   );
+
+  const {
+    types: _types,
+    typesParam: _typesParam,
+    ...apiQueryParams
+  } = queryParams;
+  const softwareTypeApiParams = softwareTypesToApiParams(selectedTypes);
 
   const {
     data: hostSoftwareRes,
@@ -192,8 +296,9 @@ const HostSoftware = ({
         scope: "host_software",
         id: id as number,
         softwareUpdatedAt,
-        ...queryParams,
-        macos_applications: macosApplicationsFilter,
+        ...apiQueryParams,
+        ...softwareTypeApiParams,
+        macos_applications: macosApplicationsFilter || undefined,
       },
     ],
     ({ queryKey }) => {
@@ -201,7 +306,11 @@ const HostSoftware = ({
     },
     {
       ...DEFAULT_USE_QUERY_OPTIONS,
-      enabled: isSoftwareEnabled && !isMyDevicePage && !isUnsupported,
+      enabled:
+        isSoftwareEnabled &&
+        !isMyDevicePage &&
+        !isUnsupported &&
+        !shouldNormalizeTypes,
       keepPreviousData: true,
       staleTime: 7000,
     }
@@ -223,14 +332,15 @@ const HostSoftware = ({
         scope: "device_software",
         id: id as string,
         softwareUpdatedAt,
-        ...queryParams,
-        macos_applications: macosApplicationsFilter,
+        ...apiQueryParams,
+        ...softwareTypeApiParams,
+        macos_applications: macosApplicationsFilter || undefined,
       },
     ],
     ({ queryKey }) => deviceAPI.getDeviceSoftware(queryKey[0]),
     {
       ...DEFAULT_USE_QUERY_OPTIONS,
-      enabled: isSoftwareEnabled && isMyDevicePage, // if disabled, we'll always show a generic "No software detected" message. No My Device Page for iPad/iPhone
+      enabled: isSoftwareEnabled && isMyDevicePage && !shouldNormalizeTypes, // if disabled, we'll always show a generic "No software detected" message. No My Device Page for iPad/iPhone
       keepPreviousData: true,
       staleTime: 7000,
     }
@@ -242,7 +352,7 @@ const HostSoftware = ({
 
   /**  Compares vuln filters to current vuln query params */
   const determineVulnFilterChange = useCallback(
-    (vulnFilters: ISoftwareVulnFiltersParams) => {
+    (vulnFilters: ISoftwareFilters) => {
       const changedEntry = Object.entries(vulnFilters).find(([key, val]) => {
         switch (key) {
           case "vulnerable":
@@ -256,6 +366,8 @@ const HostSoftware = ({
             return val !== queryParams.min_cvss_score;
           case "maxCvssScore":
             return val !== queryParams.max_cvss_score;
+          case "types":
+            return JSON.stringify(val) !== JSON.stringify(queryParams.types);
           default:
             return false;
         }
@@ -265,21 +377,7 @@ const HostSoftware = ({
     [queryParams]
   );
 
-  const onApplyVulnFilters = (vulnFilters: ISoftwareVulnFiltersParams) => {
-    const newQueryParams = {
-      query: queryParams.query,
-      orderDirection: queryParams.order_direction,
-      orderKey: queryParams.order_key,
-      perPage: queryParams.per_page,
-      page: 0, // resets page index
-      fleet_id: queryParams.fleet_id,
-      // Preserve an explicit macOS /Applications filter selection across vuln
-      // filter changes. Left undefined when not set so the platform default
-      // continues to apply.
-      macos_applications: queryParams.macos_applications,
-      ...buildSoftwareVulnFiltersQueryParams(vulnFilters),
-    };
-
+  const onApplyVulnFilters = (vulnFilters: ISoftwareFilters) => {
     // We want to determine which query param has changed in order to
     // reset the page index to 0 if any other param has changed.
     const changedParam = determineVulnFilterChange(vulnFilters);
@@ -287,10 +385,20 @@ const HostSoftware = ({
     // Update the route only if a change is detected
     if (changedParam) {
       router.replace(
-        getNextLocationPath({
-          pathPrefix: location.pathname,
-          routeTemplate: "",
-          queryParams: convertParamsToSnakeCase(newQueryParams),
+        getHostSoftwareLocationPath({
+          pathname: location.pathname,
+          platform,
+          query: queryParams.query,
+          orderKey: queryParams.order_key,
+          orderDirection: queryParams.order_direction,
+          page: 0,
+          fleetId: queryParams.fleet_id,
+          macosApplications: vulnFilters.types?.includes(
+            MACOS_APP_SOFTWARE_TYPE
+          )
+            ? macosApplicationsFilter
+            : undefined,
+          filters: vulnFilters,
         })
       );
     }
@@ -346,12 +454,7 @@ const HostSoftware = ({
             searchQuery={queryParams.query}
             page={queryParams.page}
             pagePath={pathname}
-            vulnFilters={getSoftwareVulnFiltersFromQueryParams({
-              vulnerable: queryParams.vulnerable,
-              exploit: queryParams.exploit,
-              min_cvss_score: queryParams.min_cvss_score,
-              max_cvss_score: queryParams.max_cvss_score,
-            })}
+            filters={softwareFilters}
             teamId={queryParams.fleet_id}
             macosApplicationsFilter={macosApplicationsFilter}
             onAddFiltersClick={toggleSoftwareFiltersModal}
@@ -364,11 +467,9 @@ const HostSoftware = ({
           <SoftwareFiltersModal
             onExit={toggleSoftwareFiltersModal}
             onSubmit={onApplyVulnFilters}
-            vulnFilters={getSoftwareVulnFiltersFromQueryParams({
-              vulnerable: queryParams.vulnerable,
-              exploit: queryParams.exploit,
-              min_cvss_score: queryParams.min_cvss_score,
-              max_cvss_score: queryParams.max_cvss_score,
+            vulnFilters={softwareFilters}
+            availableTypes={getSoftwareTypesForPlatform(platform, {
+              hostPage: true,
             })}
           />
         )}
