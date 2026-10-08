@@ -191,7 +191,7 @@ const SoftwarePage = ({ children, router, location }: ISoftwarePageProps) => {
     location?.pathname || "",
     platform,
     queryParams?.order_key
-  );
+  ) || DEFAULT_SORT_HEADER;
   const sortDirection =
     queryParams?.order_direction === undefined
       ? DEFAULT_SORT_DIRECTION
