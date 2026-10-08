@@ -987,9 +987,10 @@ func TestSuppressFixedRHELNVDVulnerabilities(t *testing.T) {
 	}
 
 	ds := &mock.DataStore{}
-	ds.ListSoftwareForVulnDetectionByOSVersionFunc = func(ctx context.Context, osVer fleet.OSVersion) ([]fleet.Software, error) {
+	ds.ListSoftwareForVulnDetectionByOSVersionFunc = func(ctx context.Context, osVer fleet.OSVersion, sources []string) ([]fleet.Software, error) {
 		require.Equal(t, "rhel", osVer.Platform)
 		require.Equal(t, "Rocky Linux 9.6.0", osVer.Name)
+		require.Equal(t, []string{"rpm_packages"}, sources)
 		return software, nil
 	}
 	ds.ListSoftwareVulnerabilitiesBySoftwareIDsFunc = func(ctx context.Context, softwareIDs []uint, source fleet.VulnerabilitySource) ([]fleet.SoftwareVulnerability, error) {

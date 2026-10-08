@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -538,7 +539,9 @@ func SuppressFixedRHELNVDVulnerabilities(
 		return 0, fmt.Errorf("loading RHEL OSV artifact: %w", err)
 	}
 
-	software, err := ds.ListSoftwareForVulnDetectionByOSVersion(ctx, ver)
+	software, err := ds.ListSoftwareForVulnDetectionByOSVersion(
+		ctx, ver, []string{"rpm_packages"},
+	)
 	if err != nil {
 		return 0, fmt.Errorf("listing software for OS version: %w", err)
 	}
