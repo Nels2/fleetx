@@ -522,7 +522,7 @@ func setupIAMAuthIfNeeded(conf *config.MysqlConfig, opts *common_mysql.DBOptions
 }
 
 func (ds *Datastore) MigrateTables(ctx context.Context) error {
-	return tables.MigrationClient.Up(ds.writer(ctx).DB, "")
+	return tables.MigrationClient.UpMissing(ds.writer(ctx).DB, "")
 }
 
 func (ds *Datastore) MigrateData(ctx context.Context) error {
