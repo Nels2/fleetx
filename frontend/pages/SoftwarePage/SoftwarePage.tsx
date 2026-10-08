@@ -7,7 +7,6 @@ import AutomationsButton from "components/buttons/AutomationsButton";
 import Button from "components/buttons/Button";
 import MainContent from "components/MainContent";
 import PageDescription from "components/PageDescription";
-import Spinner from "components/Spinner";
 import TabNav from "components/TabNav";
 import TabText from "components/TabText";
 import TeamsHeader from "components/TeamsHeader";
@@ -529,31 +528,26 @@ const SoftwarePage = ({ children, router, location }: ISoftwarePageProps) => {
           </Tabs>
         </TabNav>
         <div key={location?.pathname} className="tab-nav-routed-content">
-          {/* Until the tier is known, softwareFilters can't tell a Premium-only
-          filter in the URL from one to drop on Free. */}
-          {isPremiumTier === undefined ? (
-            <Spinner />
-          ) : (
-            React.cloneElement(children, {
-              router,
-              isSoftwareEnabled: Boolean(
-                softwareConfig?.features?.enable_software_inventory
-              ),
-              perPage: DEFAULT_PAGE_SIZE,
-              orderDirection: sortDirection,
-              orderKey: sortHeader,
-              currentPage: page,
-              teamId: teamIdForApi,
-              // TODO: move down into the Software Titles component
-              platform,
-              query,
-              showExploitedVulnerabilitiesOnly,
-              showDismissedVulnerabilities,
-              selfServiceOnly,
-              filters: softwareFilters,
-              onAddFiltersClick: toggleSoftwareFiltersModal,
-            })
-          )}
+          {React.cloneElement(children, {
+            router,
+            isSoftwareEnabled: Boolean(
+              softwareConfig?.features?.enable_software_inventory
+            ),
+            perPage: DEFAULT_PAGE_SIZE,
+            orderDirection: sortDirection,
+            orderKey: sortHeader,
+            currentPage: page,
+            teamId: teamIdForApi,
+            // TODO: move down into the Software Titles component
+            platform,
+            query,
+            showExploitedVulnerabilitiesOnly,
+            showDismissedVulnerabilities,
+            selfServiceOnly,
+            filters: softwareFilters,
+            vulnFilters: softwareVulnFilters,
+            onAddFiltersClick: toggleSoftwareFiltersModal,
+          })}
         </div>
       </div>
     );
