@@ -34,6 +34,8 @@ export type ISoftwareFilters = {
   aiTool?: boolean;
 };
 
+export type ISoftwareVulnFiltersParams = Omit<ISoftwareFilters, "types">;
+
 /** Page URL params for the Filters modal's selections. */
 export type ISoftwareFiltersQueryParams = {
   types?: string;
@@ -42,6 +44,40 @@ export type ISoftwareFiltersQueryParams = {
   min_cvss_score?: string;
   max_cvss_score?: string;
   ai_tool?: boolean;
+};
+
+export const getSoftwareVulnFiltersFromQueryParams = (
+  queryParams: QueryParams
+): ISoftwareVulnFiltersParams => {
+  const { vulnerable, exploit, min_cvss_score, max_cvss_score } = queryParams;
+
+  return {
+    vulnerable: stringUtils.strToBool(vulnerable as string),
+    exploit: stringUtils.strToBool(exploit as string),
+    minCvssScore: parseQueryValueToNumberOrUndefined(min_cvss_score, 0, 10),
+    maxCvssScore: parseQueryValueToNumberOrUndefined(max_cvss_score, 0, 10),
+  };
+};
+
+export const buildSoftwareVulnFiltersQueryParams = (
+  filters: ISoftwareVulnFiltersParams
+): Omit<ISoftwareFiltersQueryParams, "types"> => {
+  const { vulnerable, exploit, minCvssScore, maxCvssScore } = filters;
+
+  if (!vulnerable) {
+    return {};
+  }
+
+  return {
+    vulnerable: true,
+    ...(exploit && { exploit: true }),
+    ...(isValidNumber(minCvssScore, 0, maxCvssScore || 10) && {
+      min_cvss_score: minCvssScore.toString(),
+    }),
+    ...(isValidNumber(maxCvssScore, minCvssScore || 0, 10) && {
+      max_cvss_score: maxCvssScore.toString(),
+    }),
+  };
 };
 
 export const buildSoftwareFiltersQueryParams = (
