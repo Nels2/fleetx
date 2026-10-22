@@ -170,14 +170,14 @@ interface ISoftwarePageProps {
 const SoftwarePage = ({ children, router, location }: ISoftwarePageProps) => {
   const {
     config: globalConfigFromContext,
-    isFreeTier,
     isGlobalAdmin,
     isGlobalMaintainer,
     isOnGlobalTeam,
     isTeamAdmin,
     isTeamMaintainer,
-    isPremiumTier,
   } = useContext(AppContext);
+
+  const isPremiumTier = true;
 
   const isPrimoMode =
     globalConfigFromContext?.partnerships?.enable_primo || false;
@@ -186,11 +186,12 @@ const SoftwarePage = ({ children, router, location }: ISoftwarePageProps) => {
 
   // initial values for query params used on this page
   const platform = queryParams?.platform || "all";
-  const sortHeader = getOSTabSortHeader(
-    location?.pathname || "",
-    platform,
-    queryParams?.order_key
-  ) || DEFAULT_SORT_HEADER;
+  const sortHeader =
+    getOSTabSortHeader(
+      location?.pathname || "",
+      platform,
+      queryParams?.order_key
+    ) || DEFAULT_SORT_HEADER;
   const sortDirection =
     queryParams?.order_direction === undefined
       ? DEFAULT_SORT_DIRECTION
@@ -363,14 +364,11 @@ const SoftwarePage = ({ children, router, location }: ISoftwarePageProps) => {
   // - "All fleets" can't view Library
   const isOnLibraryTab = location.pathname.startsWith(PATHS.SOFTWARE_LIBRARY);
   useEffect(() => {
-    // Wait for config to load before deciding — isPremiumTier is undefined
-    // until then, and !undefined would incorrectly bounce premium users.
-    if (isPremiumTier === undefined) return;
     // Until the fleets load, isAllTeamsSelected reads as true and would bounce
     // a fleet-scoped user off Library.
     if (!isRouteOk) return;
 
-    if (isOnLibraryTab && (!isPremiumTier || isAllTeamsSelected)) {
+    if (isOnLibraryTab && isAllTeamsSelected) {
       // teamIdForApi, not currentTeamId: "All fleets" is -1 in app context but
       // an absent param in a URL.
       router.replace(
@@ -379,14 +377,7 @@ const SoftwarePage = ({ children, router, location }: ISoftwarePageProps) => {
         })
       );
     }
-  }, [
-    isPremiumTier,
-    isRouteOk,
-    isAllTeamsSelected,
-    isOnLibraryTab,
-    teamIdForApi,
-    router,
-  ]);
+  }, [isRouteOk, isAllTeamsSelected, isOnLibraryTab, teamIdForApi, router]);
 
   const onApplyFilters = (filters: ISoftwareFilters) => {
     const newQueryParams = {
@@ -408,7 +399,7 @@ const SoftwarePage = ({ children, router, location }: ISoftwarePageProps) => {
     toggleSoftwareFiltersModal();
   };
 
-  const navItems = isPremiumTier ? premiumSoftwareSubNav : softwareSubNav;
+  const navItems = premiumSoftwareSubNav;
 
   const navigateToNav = useCallback(
     (i: number): void => {
@@ -593,7 +584,7 @@ const SoftwarePage = ({ children, router, location }: ISoftwarePageProps) => {
         {showAddSoftwareModal && (
           <AddSoftwareModal
             onExit={() => setShowAddSoftwareModal(false)}
-            isFreeTier={isFreeTier}
+            isFreeTier={false}
           />
         )}
         {showSoftwareFiltersModal && (
@@ -602,7 +593,7 @@ const SoftwarePage = ({ children, router, location }: ISoftwarePageProps) => {
             onSubmit={onApplyFilters}
             filters={softwareFilters}
             isPremiumTier={isPremiumTier || false}
-            availableTypes={getSoftwareTypes({ premium: isPremiumTier })}
+            availableTypes={getSoftwareTypes()}
             showAiToolFilter
           />
         )}

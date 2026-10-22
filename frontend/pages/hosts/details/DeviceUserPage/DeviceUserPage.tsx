@@ -418,7 +418,6 @@ const DeviceUserPage = ({
 
   const {
     host,
-    license,
     org_logo_url: orgLogoUrl = "",
     org_logo_url_light_background: orgLogoUrlLightBackground = "",
     org_logo_url_dark_mode: orgLogoUrlDarkMode = "",
@@ -430,7 +429,7 @@ const DeviceUserPage = ({
   const darkLogoURL = orgLogoUrlDarkMode || orgLogoUrl;
   const lightLogoURL = orgLogoUrlLightMode || orgLogoUrlLightBackground;
   const orgLogoURL = darkMode ? darkLogoURL : lightLogoURL;
-  const isPremiumTier = license?.tier === "premium";
+  const isPremiumTier = true;
   const diskEncryptionSetting = host?.mdm.os_settings?.disk_encryption;
   const needsBitLockerPIN =
     diskEncryptionSetting?.action_required === "create_pin";

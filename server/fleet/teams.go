@@ -873,7 +873,7 @@ func PremiumRolesPresent(globalRole *string, teamRoles []UserTeam) bool {
 // ValidateUserRoles verifies the roles to be applied to a new or existing user.
 //
 // Argument createNew sets whether the user is being created (true) or is being modified (false).
-func ValidateUserRoles(createNew bool, payload UserPayload, license LicenseInfo) error {
+func ValidateUserRoles(createNew bool, payload UserPayload, _ LicenseInfo) error {
 	var teamUsers_ []UserTeam
 	if payload.Teams != nil {
 		teamUsers_ = *payload.Teams
@@ -881,26 +881,16 @@ func ValidateUserRoles(createNew bool, payload UserPayload, license LicenseInfo)
 	if err := ValidateRole(payload.GlobalRole, teamUsers_); err != nil {
 		return err
 	}
-	premiumRolesPresent := false
 	gitOpsRolePresent := false
 	if payload.GlobalRole != nil {
 		if *payload.GlobalRole == RoleGitOps {
 			gitOpsRolePresent = true
-		}
-		if _, ok := premiumGlobalRoles[*payload.GlobalRole]; ok {
-			premiumRolesPresent = true
 		}
 	}
 	for _, teamUser := range teamUsers_ {
 		if teamUser.Role == RoleGitOps {
 			gitOpsRolePresent = true
 		}
-		if _, ok := premiumTeamRoles[teamUser.Role]; ok {
-			premiumRolesPresent = true
-		}
-	}
-	if !license.IsPremium() && premiumRolesPresent {
-		return ErrMissingLicense
 	}
 	if gitOpsRolePresent &&
 		// New user is not API only.

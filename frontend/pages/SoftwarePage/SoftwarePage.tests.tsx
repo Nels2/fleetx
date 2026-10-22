@@ -22,7 +22,12 @@ describe("SoftwarePage tab configuration", () => {
   describe("softwareSubNav (free tier)", () => {
     it("includes Inventory, OS, and Vulnerabilities tabs", () => {
       const names = softwareSubNav.map((item) => item.name);
-      expect(names).toEqual(["Inventory", "OS", "Vulnerabilities"]);
+      expect(names).toEqual([
+        "Inventory",
+        "OS",
+        "Vulnerabilities",
+        "Suppression Rules",
+      ]);
     });
 
     it("does not include Library tab", () => {
@@ -41,7 +46,13 @@ describe("SoftwarePage tab configuration", () => {
   describe("premiumSoftwareSubNav (premium tier)", () => {
     it("includes Inventory, OS, Vulnerabilities, and Library tabs", () => {
       const names = premiumSoftwareSubNav.map((item) => item.name);
-      expect(names).toEqual(["Inventory", "OS", "Vulnerabilities", "Library"]);
+      expect(names).toEqual([
+        "Inventory",
+        "OS",
+        "Vulnerabilities",
+        "Suppression Rules",
+        "Library",
+      ]);
     });
 
     it("points Library to SOFTWARE_LIBRARY path", () => {
@@ -77,7 +88,7 @@ describe("SoftwarePage tab configuration", () => {
 
     it("returns the Library tab index for the library path", () => {
       expect(getTabIndex(PATHS.SOFTWARE_LIBRARY, premiumSoftwareSubNav)).toBe(
-        3
+        4
       );
     });
 
@@ -331,38 +342,41 @@ describe("SoftwarePage AI tools filter", () => {
     ).toBeInTheDocument();
   });
 
-  it("waits for the license tier before rendering the tab", () => {
+  it("renders the tab without waiting for the license tier", () => {
     renderInventoryTab(
       { ai_tool: "true", types: "mcp_server" },
       { isPremiumTier: undefined }
     );
 
-    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(screen.queryByRole("status")).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Open filters" })
-    ).not.toBeInTheDocument();
+    ).toBeInTheDocument();
   });
 
-  it("ignores the AI tools filter and AI types on Fleet Free", async () => {
+  it("preserves the AI tools filter and AI types on Fleet Free", async () => {
     const { user } = renderInventoryTab(
       { ai_tool: "true", types: "mcp_server,macos_app" },
       { isPremiumTier: false, isFreeTier: true }
     );
 
     expect(passedFilters()).toEqual(
-      expect.objectContaining({ aiTool: false, types: ["macos_app"] })
+      expect.objectContaining({
+        aiTool: true,
+        types: ["mcp_server", "macos_app"],
+      })
     );
 
     await user.click(screen.getByRole("button", { name: "Open filters" }));
 
     expect(
       screen.queryByRole("switch", { name: "AI tools" })
-    ).not.toBeInTheDocument();
+    ).toBeInTheDocument();
     expect(
       screen.queryByRole("checkbox", { name: "MCP server" })
-    ).not.toBeInTheDocument();
+    ).toBeInTheDocument();
     expect(
       screen.queryByRole("checkbox", { name: "AI CLI tool" })
-    ).not.toBeInTheDocument();
+    ).toBeInTheDocument();
   });
 });

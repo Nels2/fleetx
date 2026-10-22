@@ -155,10 +155,10 @@ describe("getSoftwareTypesForPlatform", () => {
     }
   );
 
-  it("hides Premium-only types by default", () => {
+  it("includes AI types by default", () => {
     expect(
       getSoftwareTypesForPlatform("darwin").some((t) => t.premiumOnly)
-    ).toBe(false);
+    ).toBe(true);
   });
 });
 
@@ -167,9 +167,9 @@ describe("getSoftwareTypes", () => {
     expect(getSoftwareTypes({ premium: true })).toEqual(SOFTWARE_TYPES);
   });
 
-  it("drops Premium-only types on Free", () => {
+  it("includes AI types on Free", () => {
     const keys = getSoftwareTypes({ premium: false }).map((t) => t.key);
-    expect(keys).not.toContain("mcp_server");
+    expect(keys).toContain("mcp_server");
     expect(keys).toContain("macos_app");
   });
 });

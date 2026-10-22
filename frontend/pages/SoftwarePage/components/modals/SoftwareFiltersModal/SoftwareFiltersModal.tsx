@@ -185,7 +185,7 @@ const SoftwareFiltersModal = ({
           inactiveText="Vulnerable software"
           activeText="Vulnerable software"
         />
-        {(
+        {
           <>
             <div className={`${baseClass}__kev`}>
               <h3 className={`${baseClass}__section-title`}>
@@ -229,7 +229,7 @@ const SoftwareFiltersModal = ({
               />
             )}
           </>
-        )}
+        }
         <div className="modal-cta-wrap">
           <Button type="submit">Apply</Button>
           <Button variant="secondary" onClick={onExit}>

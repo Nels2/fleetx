@@ -1,4 +1,4 @@
-import { parseSoftwareTypesParam, SOFTWARE_TYPES } from "interfaces/software";
+import { parseSoftwareTypesParam } from "interfaces/software";
 import numberUtils from "utilities/numbers";
 import stringUtils from "utilities/strings/stringUtils";
 import { QueryParams, parseQueryValueToNumberOrUndefined } from "utilities/url";
@@ -126,19 +126,10 @@ export const getFilterRenderDetails = (filters?: ISoftwareFilters) => {
   };
 };
 
-const PREMIUM_ONLY_TYPE_KEYS = new Set(
-  SOFTWARE_TYPES.filter((t) => t.premiumOnly).map((t) => t.key)
-);
-
-/** Drops filters the API rejects on Fleet Free, which a URL copied from a
- * Premium server can still carry. */
+/** @deprecated License tiers no longer restrict software filters. */
 export const removePremiumOnlyFilters = (
   filters: ISoftwareFilters
-): ISoftwareFilters => ({
-  ...filters,
-  aiTool: false,
-  types: filters.types?.filter((key) => !PREMIUM_ONLY_TYPE_KEYS.has(key)),
-});
+): ISoftwareFilters => ({ ...filters });
 
 export const getVulnerabilities = <
   T extends { vulnerabilities: string[] | null }
