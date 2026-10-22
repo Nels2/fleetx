@@ -545,7 +545,6 @@ const SoftwarePage = ({ children, router, location }: ISoftwarePageProps) => {
             showDismissedVulnerabilities,
             selfServiceOnly,
             filters: softwareFilters,
-            vulnFilters: softwareVulnFilters,
             onAddFiltersClick: toggleSoftwareFiltersModal,
           })}
         </div>
