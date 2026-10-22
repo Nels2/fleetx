@@ -382,11 +382,16 @@ describe("SoftwareFiltersModal component", () => {
   });
 
   it("shows vulnerability filters on Fleet Free", async () => {
-    const { user } = setUpModal({ isPremiumTier: false, availableTypes: SOFTWARE_TYPES });
+    const { user } = setUpModal({
+      isPremiumTier: false,
+      availableTypes: SOFTWARE_TYPES,
+    });
     expect(screen.getByText("Types")).toBeInTheDocument();
     expect(screen.getByText("CISA known exploit (KEV)")).toBeInTheDocument();
     await openAdvanced(user);
-    expect(screen.getByRole("combobox", { name: "Severity" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("combobox", { name: "Severity" })
+    ).toBeInTheDocument();
   });
 
   it("opens Advanced when a severity filter is already applied", () => {

@@ -159,14 +159,18 @@ describe("getFilterRenderDetails", () => {
 });
 
 describe("removePremiumOnlyFilters", () => {
-  it("drops the AI tools filter and Premium-only types", () => {
+  it("preserves AI filters regardless of tier", () => {
     expect(
       removePremiumOnlyFilters({
         vulnerable: true,
         aiTool: true,
         types: ["mcp_server", "macos_app", "ai_skill", "ai_cli_tool"],
       })
-    ).toEqual({ vulnerable: true, aiTool: false, types: ["macos_app"] });
+    ).toEqual({
+      vulnerable: true,
+      aiTool: true,
+      types: ["mcp_server", "macos_app", "ai_skill", "ai_cli_tool"],
+    });
   });
 
   it("keeps an absent types param absent", () => {

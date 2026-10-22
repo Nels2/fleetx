@@ -27,7 +27,6 @@ const renderMainContent = ({
 } = {}) => {
   const render = createCustomRenderer({
     context: {
-      // Every banner but the APNs one sits inside MainContent's premium gate.
       app: {
         isPremiumTier,
         isVppExpired,
@@ -50,6 +49,11 @@ const renderMainContent = ({
 };
 
 describe("MainContent app-wide banners", () => {
+  it("shows the Microsoft Graph banner on Free when the credential is invalid", () => {
+    renderMainContent({ credentialInvalid: true, isPremiumTier: false });
+    expect(screen.getByText(GRAPH_BANNER_TEXT)).toBeInTheDocument();
+  });
+
   it("shows the Microsoft Graph banner when the credential is invalid", () => {
     renderMainContent({ credentialInvalid: true });
     expect(screen.getByText(GRAPH_BANNER_TEXT)).toBeInTheDocument();
@@ -130,11 +134,13 @@ describe("MainContent license host limit banner", () => {
     );
   };
 
-  it("shows the banner when hosts exceed the licensed count", () => {
+  it("does not show a license banner when hosts exceed the licensed count", () => {
     renderWithHostCount({ hostCount: 61 });
     expect(
-      screen.getByText(/Your license covers 50 hosts, but you have 61 enrolled/)
-    ).toBeInTheDocument();
+      screen.queryByText(
+        /Your license covers 50 hosts, but you have 61 enrolled/
+      )
+    ).not.toBeInTheDocument();
   });
 
   it("does not show the banner until hosts are more than 20% over the licensed count", () => {

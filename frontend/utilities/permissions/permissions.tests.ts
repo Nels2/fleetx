@@ -283,3 +283,20 @@ describe("permissions - isEndUserIdPConfigured", () => {
     expect(permissions.isEndUserIdPConfigured(createMockConfig())).toBe(false);
   });
 });
+
+describe("license-independent feature access", () => {
+  it.each(["free", "premium"])(
+    "enables features for an expired %s license",
+    (tier) => {
+      const config = createMockConfig();
+      config.license = {
+        ...config.license,
+        tier,
+        expiration: "2000-01-01T00:00:00Z",
+        device_count: 1,
+      };
+      expect(permissions.isPremiumTier(config)).toBe(true);
+      expect(permissions.isFreeTier(config)).toBe(false);
+    }
+  );
+});

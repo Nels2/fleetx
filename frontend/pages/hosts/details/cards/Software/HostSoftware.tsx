@@ -1,12 +1,6 @@
 import { AxiosError } from "axios";
 import { isEqual, omit } from "lodash";
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "react-query";
 import { InjectedRouter } from "react-router";
 
@@ -14,7 +8,6 @@ import CardHeader from "components/CardHeader";
 import DataError from "components/DataError";
 import DeviceUserError from "components/DeviceUserError";
 import Spinner from "components/Spinner";
-import { AppContext } from "context/app";
 import { MdmEnrollmentStatus } from "interfaces/mdm";
 import {
   HostPlatform,
@@ -161,16 +154,12 @@ const HostSoftware = ({
   onShowInventoryVersions,
   isSoftwareEnabled = false,
   isMyDevicePage = false,
-  isPremiumTier: isPremiumTierProp,
   hostMdmEnrollmentStatus = null,
 }: IHostSoftwareProps) => {
-  const { isPremiumTier: isPremiumTierFromContext } = useContext(AppContext);
   // The My device page is token-authenticated and has no app session/context, so
   // its premium status is provided explicitly by the caller. Everywhere else we
   // read it from the app context.
-  const isPremiumTier = isMyDevicePage
-    ? isPremiumTierProp
-    : isPremiumTierFromContext;
+  const isPremiumTier = true;
 
   const availableTypes = useMemo(
     () =>
@@ -181,8 +170,8 @@ const HostSoftware = ({
     [platform, isPremiumTier]
   );
 
-  // Keys for another platform (a URL copied between hosts) or, on Free, for a
-  // Premium-only type are dropped. They would otherwise filter the list with no
+  // Keys for another platform (a URL copied between hosts) are dropped.
+  // They would otherwise filter the list with no
   // chip in the picker to clear them.
   const selectedTypes = (queryParams.types ?? []).filter((key) =>
     availableTypes.some((t) => t.key === key)
@@ -197,8 +186,7 @@ const HostSoftware = ({
     isMacOS(platform) && selectedTypes.length === 0 && !isCleared
       ? [MACOS_APP_SOFTWARE_TYPE]
       : selectedTypes;
-  // Free rejects ai_tool, which a URL copied from a Premium server can carry.
-  const aiTool = (isPremiumTier && queryParams.ai_tool) || undefined;
+  const aiTool = queryParams.ai_tool || undefined;
   const isNormalizingUrl =
     !isEqual(queryParams.types ?? [], normalizedTypes) ||
     queryParams.ai_tool !== !!aiTool;

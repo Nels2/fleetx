@@ -70,15 +70,7 @@ func (svc *Service) ListSoftwareTitles(
 		return nil, 0, nil, err
 	}
 
-	lic, err := svc.License(ctx)
-	if err != nil {
-		return nil, 0, nil, ctxerr.Wrap(ctx, err, "get license")
-	}
-
-	if opt.TeamID != nil && *opt.TeamID != 0 && !lic.IsPremium() {
-		return nil, 0, nil, fleet.ErrMissingLicense
-	}
-
+	var err error
 	opt.TypeFilter, err = fleet.ParseSoftwareTypeFilter(opt.Source, opt.ExtensionFor)
 	if err != nil {
 		return nil, 0, nil, err
@@ -102,12 +94,7 @@ func (svc *Service) ListSoftwareTitles(
 	if err != nil {
 		return nil, 0, nil, err
 	}
-	if !lic.IsPremium() {
-		for i := range titles {
-			titles[i].AITool = nil
-		}
-	}
-	// Clear the deprecated software_package object from every response except setup experience
+	// Clear the deprecated software_package object from every response except setup experience.
 	for i := range titles {
 		titles[i].SoftwarePackage = nil
 	}
@@ -179,13 +166,8 @@ func (svc *Service) SoftwareTitleByID(ctx context.Context, id uint, teamID *uint
 		// all, so existence elsewhere can't be inferred from the response.
 		return nil, ctxerr.Wrap(ctx, err, "getting software title by id")
 	}
-
-	license, err := svc.License(ctx)
-	if err != nil {
-		return nil, ctxerr.Wrap(ctx, err, "get license")
-	}
 	// Skip installer data when no fleet is given, packages, App Store apps and in-house apps are set per fleet
-	if license.IsPremium() && teamID != nil {
+	if teamID != nil {
 		// add software installer data if needed
 		if software.SoftwareInstallersCount > 0 {
 			pkgs, err := svc.ds.GetSoftwarePackagesByTeamAndTitleID(ctx, teamID, id)
@@ -347,9 +329,6 @@ func (svc *Service) SoftwareTitleByID(ctx context.Context, id uint, teamID *uint
 	}
 
 	svc.filterInstallerDetailsForUser(ctx, teamID, software)
-	if !license.IsPremium() {
-		software.AITool = nil
-	}
 
 	return software, nil
 }

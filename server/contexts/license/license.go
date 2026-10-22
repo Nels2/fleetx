@@ -36,19 +36,13 @@ func FromContext(ctx context.Context) (LicenseChecker, bool) {
 }
 
 // IsPremium reports whether premium features are enabled for the request.
-// Paid tiers are deprecated, so missing license context defaults to premium.
-func IsPremium(ctx context.Context) bool {
-	if lic, ok := FromContext(ctx); ok && lic != nil {
-		return lic.IsPremium()
-	}
+// Feature access is independent of license metadata.
+func IsPremium(_ context.Context) bool {
 	return true
 }
 
 // IsAllowDisableTelemetry returns true if telemetry can be disabled based on
 // the license in the context.
-func IsAllowDisableTelemetry(ctx context.Context) bool {
-	if lic, ok := FromContext(ctx); ok && lic != nil {
-		return lic.IsAllowDisableTelemetry()
-	}
+func IsAllowDisableTelemetry(_ context.Context) bool {
 	return true
 }

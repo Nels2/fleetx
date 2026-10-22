@@ -43,7 +43,7 @@ export interface ISoftware {
   vendor?: string;
   release?: string;
   icon_url: string | null; // Only available on team view if an admin uploaded an icon to a team's software
-  /** Fleet marked this software as an AI tool (Premium; always false on Free). */
+  /** Fleet marked this software as an AI tool. */
   ai_tool?: boolean;
 }
 
@@ -270,7 +270,7 @@ export interface ISoftwareTitle {
   auto_update_enabled?: boolean;
   auto_update_window_start?: string;
   auto_update_window_end?: string;
-  /** Fleet marked this software as an AI tool (Premium; always false on Free). */
+  /** Fleet marked this software as an AI tool. */
   ai_tool?: boolean;
 }
 
@@ -300,7 +300,7 @@ export interface ISoftwareTitleDetails {
   auto_update_enabled?: boolean;
   auto_update_window_start?: string;
   auto_update_window_end?: string;
-  /** Fleet marked this software as an AI tool (Premium; always false on Free). */
+  /** Fleet marked this software as an AI tool. */
   ai_tool?: boolean;
 }
 
@@ -333,7 +333,7 @@ export interface ISoftwareVersion {
   generated_cpe: string;
   vulnerabilities: ISoftwareVulnerability[] | null;
   hosts_count?: number;
-  /** Fleet marked this software as an AI tool (Premium; always false on Free). */
+  /** Fleet marked this software as an AI tool. */
   ai_tool?: boolean;
 }
 
@@ -743,7 +743,7 @@ export interface ISoftwareType {
   platforms: readonly SoftwareTypePlatform[];
   /** Installer-only sources never appear in a host's inventory. */
   installerOnly?: boolean;
-  /** Hidden on Fleet Free, where the API rejects the source. */
+  /** Legacy tier metadata; does not restrict feature access. */
   premiumOnly?: boolean;
 }
 
@@ -794,11 +794,10 @@ const getSoftwareTypePlatform = (
   }
 };
 
-/** Software types available on the license tier, sorted by display name. */
-export const getSoftwareTypes = (opts?: {
+/** Software types sorted by display name. */
+export const getSoftwareTypes = (_opts?: {
   premium?: boolean;
-}): ISoftwareType[] =>
-  SOFTWARE_TYPES.filter((t) => opts?.premium || !t.premiumOnly);
+}): ISoftwareType[] => [...SOFTWARE_TYPES];
 
 /** Software types that apply to a host platform, sorted by display name.
  * Host pages hide installer-only types because hosts never report them. */
@@ -1212,7 +1211,7 @@ export interface IHostSoftware {
   auto_update_enabled?: boolean;
   auto_update_window_start?: string;
   auto_update_window_end?: string;
-  /** Fleet marked this software as an AI tool (Premium; always false on Free). */
+  /** Fleet marked this software as an AI tool. */
   ai_tool?: boolean;
 }
 

@@ -1,5 +1,4 @@
 import React, { useContext } from "react";
-import { useErrorHandler } from "react-error-boundary";
 
 import { AppContext } from "context/app";
 
@@ -8,18 +7,12 @@ interface IAuthenticatedAdminRoutesProps {
 }
 
 /**
- * Checks if on the premium tier routing
+ * Retains the signed-in requirement for legacy premium routes
  */
 const PremiumRoutes = ({ children }: IAuthenticatedAdminRoutesProps) => {
-  const handlePageError = useErrorHandler();
-  const { currentUser, isPremiumTier } = useContext(AppContext);
+  const { currentUser } = useContext(AppContext);
 
   if (!currentUser) {
-    return null;
-  }
-
-  if (!isPremiumTier) {
-    handlePageError({ status: 403 });
     return null;
   }
 
