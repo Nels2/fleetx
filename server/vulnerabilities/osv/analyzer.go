@@ -593,7 +593,7 @@ func SuppressFixedRHELNVDVulnerabilities(
 				if nvdVuln.CVE != osvVuln.CVE {
 					continue
 				}
-				if !isVulnerableRPM(sw.Version, sw.Release, osvVuln) {
+				if !isVulnerableRPM(buildRPMVer(sw), osvVuln) {
 					toDelete = append(toDelete, nvdVuln)
 				}
 				break
