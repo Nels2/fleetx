@@ -419,7 +419,7 @@ describe("HostSoftware", () => {
       { page: "Host details", isMyDevicePage: false, isPremiumTier: false },
       { page: "My device", isMyDevicePage: true, isPremiumTier: false },
     ])(
-      "$page offers the toggle and the AI types only on Premium (Premium: $isPremiumTier)",
+      "$page offers the toggle and AI types regardless of tier (Premium: $isPremiumTier)",
       async ({ isMyDevicePage, isPremiumTier }) => {
         jest
           .spyOn(deviceAPI, "getDeviceSoftware")
@@ -434,11 +434,9 @@ describe("HostSoftware", () => {
         await user.click(
           await screen.findByRole("button", { name: "Add filters" })
         );
-        expect(!!screen.queryByRole("switch", { name: "AI tools" })).toBe(
-          isPremiumTier
-        );
+        expect(!!screen.queryByRole("switch", { name: "AI tools" })).toBe(true);
         ["AI CLI tool", "AI skill", "MCP server"].forEach((name) =>
-          expect(!!screen.queryByRole("checkbox", { name })).toBe(isPremiumTier)
+          expect(!!screen.queryByRole("checkbox", { name })).toBe(true)
         );
       }
     );
@@ -474,34 +472,25 @@ describe("HostSoftware", () => {
         query: { types: "windows_app", ai_tool: "true" },
       },
     ])(
-      "drops the AI filters from the URL and the request on Free ($name)",
+      "preserves AI filters in the URL and request on Free ($name)",
       async ({ isMyDevicePage, query }) => {
         const getDeviceSoftware = jest
           .spyOn(deviceAPI, "getDeviceSoftware")
           .mockResolvedValue(createMockDeviceSoftwareResponse());
         const spy = isMyDevicePage ? getDeviceSoftware : getHostSoftware;
 
-        const { replace, rerender } = renderHostSoftware({
+        const { replace } = renderHostSoftware({
           platform: "windows",
           query,
           isMyDevicePage,
         });
-
-        await waitFor(() => expect(replace).toHaveBeenCalledTimes(1));
-        const url = new URL(replace.mock.calls[0][0], "http://fleet");
-        expect(url.searchParams.get("types")).toBe("windows_app");
-        expect(url.searchParams.has("ai_tool")).toBe(false);
-        expect(spy).not.toHaveBeenCalled();
-
-        const nextQuery: Record<string, string> = {};
-        url.searchParams.forEach((value, key) => {
-          nextQuery[key] = value;
-        });
-        rerender(nextQuery);
         await waitFor(() => expect(spy).toHaveBeenCalled());
+        expect(replace).not.toHaveBeenCalled();
         const params = lastCallParams(spy);
-        expect(params.ai_tool).toBeUndefined();
-        expect(params.source).toBe("programs");
+        expect(params.ai_tool).toBe(true);
+        expect(params.source).toBe(
+          query.types.includes("ai_skill") ? "ai_skills,programs" : "programs"
+        );
       }
     );
   });
