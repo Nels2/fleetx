@@ -453,8 +453,10 @@ func matchSoftwareToRHELOSV(software []fleet.Software, artifact *RHELOSVArtifact
 }
 
 func rhelOSVPackageName(name string) string {
-    if _, isKernel := rhelKernelPackages[name]; isKernel { return "kernel" }
-    return name
+	if _, isKernel := rhelKernelPackages[name]; isKernel {
+		return "kernel"
+	}
+	return name
 }
 
 // buildRPMVer returns the "[epoch:]version[-release]" string of an RPM package. A missing epoch is
